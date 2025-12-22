@@ -117,6 +117,10 @@ __pycache__/
 venv/
 cdk.out/
 .sam/
+data/
+*.db
+*.sqlite
+*.sqlite3
 `;
 
   await fs.writeFile(path.join(projectPath, '.gitignore'), gitignore);

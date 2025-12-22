@@ -12,7 +12,9 @@ export async function generateFastAPI(backendPath: string, config: ProjectConfig
   ];
 
   // Add database dependencies
-  if (config.storage === 'local-sqlite') {
+  if (config.storage === 'local-json') {
+    // No additional dependencies needed for JSON file storage (uses built-in json module)
+  } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql') {
       dependencies.push('sqlalchemy==2.0.36');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
@@ -82,7 +84,9 @@ if __name__ == "__main__":
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
 
   // Create database setup if needed
-  if (config.databaseType === 'sql') {
+  if (config.storage === 'local-json') {
+    await generateJSONFileSetup(srcPath, config);
+  } else if (config.databaseType === 'sql') {
     await generateSQLAlchemySetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
     await generateMongoDBSetup(srcPath, config);
@@ -179,5 +183,88 @@ users_table = dynamodb.Table('users')
 `;
 
   await fs.writeFile(path.join(srcPath, 'database.py'), dbContent);
+}
+
+async function generateJSONFileSetup(srcPath: string, config: ProjectConfig): Promise<void> {
+  const backendPath = path.dirname(path.dirname(srcPath));
+  const dbContent = `import json
+import os
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+
+DB_FILE = Path(__file__).parent.parent / 'data' / 'database.json'
+
+# Ensure data directory exists
+DB_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+# Initialize database file if it doesn't exist
+if not DB_FILE.exists():
+    with open(DB_FILE, 'w') as f:
+        json.dump({'users': []}, f, indent=2)
+
+def read_db() -> Dict[str, Any]:
+    """Read the database from JSON file."""
+    try:
+        with open(DB_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {'users': []}
+
+def write_db(data: Dict[str, Any]) -> None:
+    """Write data to the database JSON file."""
+    with open(DB_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def get_users() -> List[Dict[str, Any]]:
+    """Get all users from the database."""
+    db = read_db()
+    return db.get('users', [])
+
+def add_user(user: Dict[str, Any]) -> Dict[str, Any]:
+    """Add a new user to the database."""
+    db = read_db()
+    users = db.get('users', [])
+    new_user = {
+        **user,
+        'id': len(users) + 1,
+        'created_at': str(Path(__file__).stat().st_mtime)
+    }
+    users.append(new_user)
+    db['users'] = users
+    write_db(db)
+    return new_user
+
+def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
+    """Get a user by ID."""
+    users = get_users()
+    return next((u for u in users if u.get('id') == user_id), None)
+
+def update_user(user_id: int, updates: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Update a user by ID."""
+    db = read_db()
+    users = db.get('users', [])
+    for i, user in enumerate(users):
+        if user.get('id') == user_id:
+            users[i] = {**user, **updates, 'updated_at': str(Path(__file__).stat().st_mtime)}
+            db['users'] = users
+            write_db(db)
+            return users[i]
+    return None
+
+def delete_user(user_id: int) -> bool:
+    """Delete a user by ID."""
+    db = read_db()
+    users = db.get('users', [])
+    db['users'] = [u for u in users if u.get('id') != user_id]
+    write_db(db)
+    return True
+`;
+
+  await fs.writeFile(path.join(srcPath, 'database.py'), dbContent);
+
+  // Create initial data directory and file
+  const dataPath = path.join(backendPath, 'data');
+  await fs.ensureDir(dataPath);
+  await fs.writeJSON(path.join(dataPath, 'database.json'), { users: [] }, { spaces: 2 });
 }
 

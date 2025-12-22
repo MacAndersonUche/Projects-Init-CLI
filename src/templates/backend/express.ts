@@ -24,7 +24,9 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
   };
 
   // Add database dependencies
-  if (config.storage === 'local-sqlite') {
+  if (config.storage === 'local-json') {
+    // No additional dependencies needed for JSON file storage
+  } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       devDependencies['prisma'] = '^6.0.1';
@@ -191,7 +193,9 @@ export default app;
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
 
   // Create database setup if needed
-  if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
+  if (config.storage === 'local-json') {
+    await generateJSONFileSetup(srcPath, config);
+  } else if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
     await generatePrismaConfig(backendPath, config);
   } else if (config.databaseType === 'sql' && config.storage === 'local-sqlite') {
     await generateSQLiteSetup(srcPath, config);
@@ -354,5 +358,90 @@ export default docClient;
 `;
 
   await fs.writeFile(path.join(srcPath, 'db.ts'), dbContent);
+}
+
+async function generateJSONFileSetup(srcPath: string, config: ProjectConfig): Promise<void> {
+  const backendPath = path.dirname(path.dirname(srcPath));
+  const dbContent = `import fs from 'fs-extra';
+import path from 'path';
+
+const DB_FILE = path.join(process.cwd(), 'data', 'database.json');
+
+// Ensure data directory exists
+const dataDir = path.dirname(DB_FILE);
+fs.ensureDirSync(dataDir);
+
+// Initialize database file if it doesn't exist
+if (!fs.existsSync(DB_FILE)) {
+  fs.writeJSONSync(DB_FILE, { users: [] }, { spaces: 2 });
+}
+
+// Read database
+export const readDB = (): any => {
+  try {
+    return fs.readJSONSync(DB_FILE);
+  } catch (error) {
+    console.error('Error reading database:', error);
+    return { users: [] };
+  }
+};
+
+// Write database
+export const writeDB = (data: any): void => {
+  try {
+    fs.writeJSONSync(DB_FILE, data, { spaces: 2 });
+  } catch (error) {
+    console.error('Error writing database:', error);
+    throw error;
+  }
+};
+
+// Helper functions
+export const getUsers = () => {
+  const db = readDB();
+  return db.users || [];
+};
+
+export const addUser = (user: any) => {
+  const db = readDB();
+  if (!db.users) db.users = [];
+  const newUser = { ...user, id: db.users.length + 1, createdAt: new Date().toISOString() };
+  db.users.push(newUser);
+  writeDB(db);
+  return newUser;
+};
+
+export const getUserById = (id: number) => {
+  const db = readDB();
+  return db.users?.find((u: any) => u.id === id);
+};
+
+export const updateUser = (id: number, updates: any) => {
+  const db = readDB();
+  const userIndex = db.users?.findIndex((u: any) => u.id === id);
+  if (userIndex !== -1 && userIndex !== undefined) {
+    db.users[userIndex] = { ...db.users[userIndex], ...updates, updatedAt: new Date().toISOString() };
+    writeDB(db);
+    return db.users[userIndex];
+  }
+  return null;
+};
+
+export const deleteUser = (id: number) => {
+  const db = readDB();
+  db.users = db.users?.filter((u: any) => u.id !== id) || [];
+  writeDB(db);
+  return true;
+};
+
+export default { readDB, writeDB, getUsers, addUser, getUserById, updateUser, deleteUser };
+`;
+
+  await fs.writeFile(path.join(srcPath, 'db.ts'), dbContent);
+
+  // Create initial data directory and file
+  const dataPath = path.join(backendPath, 'data');
+  await fs.ensureDir(dataPath);
+  await fs.writeJSON(path.join(dataPath, 'database.json'), { users: [] }, { spaces: 2 });
 }
 

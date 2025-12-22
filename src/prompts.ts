@@ -47,6 +47,7 @@ export async function promptUser(): Promise<ProjectConfig> {
       choices: [
         { name: 'CDK to create database', value: 'cdk' },
         { name: 'Local SQLite (Node.js)', value: 'local-sqlite' },
+        { name: 'Local JSON file', value: 'local-json' },
         { name: 'External database URL', value: 'external-url' }
       ]
     }
@@ -77,8 +78,8 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.databaseUrl = urlAnswer.databaseUrl;
   }
 
-  // Ask for database type if backend is not CDK/SAM or storage is not CDK
-  if (config.backend !== 'cdk' && config.backend !== 'sam' && config.storage !== 'cdk') {
+  // Ask for database type if backend is not CDK/SAM or storage is not CDK/local-json
+  if (config.backend !== 'cdk' && config.backend !== 'sam' && config.storage !== 'cdk' && config.storage !== 'local-json') {
     const dbTypeAnswer = await inquirer.prompt([
       {
         type: 'list',

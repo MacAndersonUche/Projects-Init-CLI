@@ -62,10 +62,31 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Get default branch
+        id: get_branch
+        run: |
+          # Get the default branch from the repository
+          DEFAULT_BRANCH=$(git remote show origin | grep "HEAD branch" | awk '{print $NF}')
+          if [ -z "$DEFAULT_BRANCH" ]; then
+            # Fallback: check which branch exists
+            if git ls-remote --heads origin main | grep -q main; then
+              DEFAULT_BRANCH="main"
+            elif git ls-remote --heads origin master | grep -q master; then
+              DEFAULT_BRANCH="master"
+            else
+              # Last resort: use the branch where workflow is running
+              DEFAULT_BRANCH="${{ github.ref_name }}"
+            fi
+          fi
+          echo "branch=${DEFAULT_BRANCH}" >> $GITHUB_OUTPUT
+          echo "Using branch: ${DEFAULT_BRANCH}"
+
       - name: Create Git tag and push
         if: github.event_name == 'workflow_dispatch'
         run: |
           VERSION=$(node -p "require('./package.json').version")
+          BRANCH="${{ steps.get_branch.outputs.branch }}"
+          echo "Pushing version ${VERSION} to branch: ${BRANCH}"
           git tag "v${VERSION}"
-          git push origin main --tags
-          git push origin HEAD:main
+          git push origin ${BRANCH} --tags
+          git push origin HEAD:${BRANCH}

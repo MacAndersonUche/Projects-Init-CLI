@@ -25,7 +25,9 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
   };
 
   // Add database dependencies
-  if (config.storage === 'local-sqlite') {
+  if (config.storage === 'local-json') {
+    // No additional dependencies needed for JSON file storage
+  } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       dependencies['prisma'] = '^6.0.1';
@@ -313,7 +315,9 @@ describe('AppService', () => {
   await fs.writeFile(path.join(testPath, 'app.service.spec.ts'), appServiceTest);
 
   // Create database setup if needed
-  if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
+  if (config.storage === 'local-json') {
+    await generateJSONFileModule(srcPath, config);
+  } else if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
     await generatePrismaConfig(backendPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
     await generateMongoDBModule(srcPath, config);
@@ -399,6 +403,94 @@ export const UserSchema = SchemaFactory.createForClass(User);
 `;
 
   await fs.writeFile(path.join(schemasPath, 'user.schema.ts'), userSchema);
+}
+
+async function generateJSONFileModule(srcPath: string, config: ProjectConfig): Promise<void> {
+  const backendPath = path.dirname(path.dirname(srcPath));
+  
+  // Create JSON service
+  const jsonService = `import { Injectable } from '@nestjs/common';
+import * as fs from 'fs-extra';
+import * as path from 'path';
+
+const DB_FILE = path.join(process.cwd(), 'data', 'database.json');
+
+@Injectable()
+export class JsonDatabaseService {
+  private ensureDataDir(): void {
+    const dataDir = path.dirname(DB_FILE);
+    fs.ensureDirSync(dataDir);
+    if (!fs.existsSync(DB_FILE)) {
+      fs.writeJSONSync(DB_FILE, { users: [] }, { spaces: 2 });
+    }
+  }
+
+  private readDB(): any {
+    this.ensureDataDir();
+    try {
+      return fs.readJSONSync(DB_FILE);
+    } catch (error) {
+      console.error('Error reading database:', error);
+      return { users: [] };
+    }
+  }
+
+  private writeDB(data: any): void {
+    try {
+      fs.writeJSONSync(DB_FILE, data, { spaces: 2 });
+    } catch (error) {
+      console.error('Error writing database:', error);
+      throw error;
+    }
+  }
+
+  getUsers(): any[] {
+    const db = this.readDB();
+    return db.users || [];
+  }
+
+  addUser(user: any): any {
+    const db = this.readDB();
+    if (!db.users) db.users = [];
+    const newUser = { ...user, id: db.users.length + 1, createdAt: new Date().toISOString() };
+    db.users.push(newUser);
+    this.writeDB(db);
+    return newUser;
+  }
+
+  getUserById(id: number): any {
+    const db = this.readDB();
+    return db.users?.find((u: any) => u.id === id);
+  }
+
+  updateUser(id: number, updates: any): any {
+    const db = this.readDB();
+    const userIndex = db.users?.findIndex((u: any) => u.id === id);
+    if (userIndex !== -1 && userIndex !== undefined) {
+      db.users[userIndex] = { ...db.users[userIndex], ...updates, updatedAt: new Date().toISOString() };
+      this.writeDB(db);
+      return db.users[userIndex];
+    }
+    return null;
+  }
+
+  deleteUser(id: number): boolean {
+    const db = this.readDB();
+    db.users = db.users?.filter((u: any) => u.id !== id) || [];
+    this.writeDB(db);
+    return true;
+  }
+}
+`;
+
+  const servicesPath = path.join(srcPath, 'services');
+  await fs.ensureDir(servicesPath);
+  await fs.writeFile(path.join(servicesPath, 'json-database.service.ts'), jsonService);
+
+  // Create initial data directory and file
+  const dataPath = path.join(backendPath, 'data');
+  await fs.ensureDir(dataPath);
+  await fs.writeJSON(path.join(dataPath, 'database.json'), { users: [] }, { spaces: 2 });
 }
 
 async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
