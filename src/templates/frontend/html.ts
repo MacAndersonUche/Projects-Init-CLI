@@ -13,10 +13,10 @@ export async function generateHTML(frontendPath: string, config: ProjectConfig):
       preview: 'vite preview'
     },
     devDependencies: {
-      vite: '^5.0.8',
-      'tailwindcss': '^3.4.0',
-      'postcss': '^8.4.32',
-      'autoprefixer': '^10.4.16'
+      vite: '^6.0.1',
+      'tailwindcss': '^3.4.14',
+      'postcss': '^8.4.47',
+      'autoprefixer': '^10.4.20'
     }
   };
 
@@ -118,5 +118,40 @@ console.log('${config.projectName} is ready!');
 `;
 
   await fs.writeFile(path.join(srcPath, 'main.js'), mainJs);
+
+  // Create deployment files
+  await generateFrontendDeployment(frontendPath, config);
+}
+
+async function generateFrontendDeployment(frontendPath: string, config: ProjectConfig): Promise<void> {
+  // Netlify configuration
+  const netlifyToml = `[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "20"
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'netlify.toml'), netlifyToml);
+
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'render.yaml'), renderYaml);
 }
 

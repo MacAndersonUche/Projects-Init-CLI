@@ -4,30 +4,30 @@ import { ProjectConfig } from '../../types';
 
 export async function generateFastAPI(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: string[] = [
-    'fastapi==0.104.1',
-    'uvicorn[standard]==0.24.0',
-    'python-dotenv==1.0.0',
-    'pydantic==2.5.2',
-    'pydantic-settings==2.1.0'
+    'fastapi==0.115.6',
+    'uvicorn[standard]==0.32.1',
+    'python-dotenv==1.0.1',
+    'pydantic==2.10.3',
+    'pydantic-settings==2.6.1'
   ];
 
   // Add database dependencies
   if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql') {
-      dependencies.push('sqlalchemy==2.0.23');
+      dependencies.push('sqlalchemy==2.0.36');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies.push('motor==3.3.2');
-      dependencies.push('pymongo==4.6.1');
+      dependencies.push('motor==3.6.0');
+      dependencies.push('pymongo==4.10.1');
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql') {
-      dependencies.push('sqlalchemy==2.0.23');
-      dependencies.push('psycopg2-binary==2.9.9');
+      dependencies.push('sqlalchemy==2.0.36');
+      dependencies.push('psycopg2-binary==2.9.10');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies.push('motor==3.3.2');
-      dependencies.push('pymongo==4.6.1');
+      dependencies.push('motor==3.6.0');
+      dependencies.push('pymongo==4.10.1');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies.push('boto3==1.29.7');
+      dependencies.push('boto3==1.35.47');
     }
   }
 
@@ -89,6 +89,25 @@ if __name__ == "__main__":
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
     await generateDynamoDBSetup(srcPath, config);
   }
+
+  // Create deployment files
+  await generateBackendDeployment(backendPath, config);
+}
+
+async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.main:app --host 0.0.0.0 --port \$PORT
+    envVars:
+      - key: PORT
+        value: 3001
+`;
+
+  await fs.writeFile(path.join(backendPath, 'render.yaml'), renderYaml);
 }
 
 async function generateSQLAlchemySetup(srcPath: string, config: ProjectConfig): Promise<void> {

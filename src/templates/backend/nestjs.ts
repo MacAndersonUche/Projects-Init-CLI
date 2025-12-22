@@ -4,65 +4,65 @@ import { ProjectConfig } from '../../types';
 
 export async function generateNestJS(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
-    '@nestjs/common': '^10.3.0',
-    '@nestjs/core': '^10.3.0',
-    '@nestjs/platform-express': '^10.3.0',
-    '@nestjs/testing': '^10.3.0',
-    'reflect-metadata': '^0.1.14',
+    '@nestjs/common': '^10.4.8',
+    '@nestjs/core': '^10.4.8',
+    '@nestjs/platform-express': '^10.4.8',
+    '@nestjs/testing': '^10.4.8',
+    'reflect-metadata': '^0.2.2',
     'rxjs': '^7.8.1'
   };
 
   const devDependencies: Record<string, string> = {
-    '@nestjs/cli': '^10.2.1',
-    '@nestjs/schematics': '^10.0.3',
-    '@types/express': '^4.17.21',
-    '@types/node': '^20.10.6',
+    '@nestjs/cli': '^10.4.5',
+    '@nestjs/schematics': '^10.1.1',
+    '@types/express': '^5.0.0',
+    '@types/node': '^22.7.5',
     'source-map-support': '^0.5.21',
     'ts-loader': '^9.5.1',
     'ts-node': '^10.9.2',
     'tsconfig-paths': '^4.2.0',
-    typescript: '^5.3.3'
+    typescript: '^5.6.3'
   };
 
   // Add database dependencies
   if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^5.7.1';
-      dependencies['prisma'] = '^5.7.1';
+      dependencies['@prisma/client'] = '^6.0.1';
+      dependencies['prisma'] = '^6.0.1';
     } else if (config.databaseType === 'sql') {
-      dependencies['typeorm'] = '^0.3.17';
-      dependencies['better-sqlite3'] = '^9.2.2';
-      devDependencies['@types/better-sqlite3'] = '^7.6.8';
+      dependencies['typeorm'] = '^0.3.20';
+      dependencies['better-sqlite3'] = '^11.7.0';
+      devDependencies['@types/better-sqlite3'] = '^7.6.9';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['@nestjs/mongoose'] = '^10.0.2';
-      dependencies['mongoose'] = '^8.0.3';
+      dependencies['@nestjs/mongoose'] = '^10.1.0';
+      dependencies['mongoose'] = '^8.8.4';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.490.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.490.0';
+      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^5.7.1';
-      dependencies['prisma'] = '^5.7.1';
+      dependencies['@prisma/client'] = '^6.0.1';
+      dependencies['prisma'] = '^6.0.1';
     } else if (config.databaseType === 'sql') {
-      dependencies['typeorm'] = '^0.3.17';
-      dependencies['pg'] = '^8.11.3';
-      devDependencies['@types/pg'] = '^8.10.9';
+      dependencies['typeorm'] = '^0.3.20';
+      dependencies['pg'] = '^8.13.1';
+      devDependencies['@types/pg'] = '^8.11.10';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['@nestjs/mongoose'] = '^10.0.2';
-      dependencies['mongoose'] = '^8.0.3';
+      dependencies['@nestjs/mongoose'] = '^10.1.0';
+      dependencies['mongoose'] = '^8.8.4';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.490.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.490.0';
+      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
     }
   }
 
   // Add API type dependencies
   if (config.apiType === 'graphql') {
-    dependencies['@nestjs/graphql'] = '^12.0.9';
-    dependencies['@nestjs/apollo'] = '^12.0.9';
+    dependencies['@nestjs/graphql'] = '^12.1.0';
+    dependencies['@nestjs/apollo'] = '^12.1.0';
     dependencies['apollo-server-express'] = '^3.12.1';
-    dependencies['graphql'] = '^16.8.1';
+    dependencies['graphql'] = '^16.9.0';
   }
 
   const packageJson = {
@@ -88,15 +88,15 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
     dependencies,
     devDependencies: {
       ...devDependencies,
-      '@typescript-eslint/eslint-plugin': '^6.15.0',
-      '@typescript-eslint/parser': '^6.15.0',
-      eslint: '^8.56.0',
+      '@typescript-eslint/eslint-plugin': '^8.15.0',
+      '@typescript-eslint/parser': '^8.15.0',
+      eslint: '^9.15.0',
       'eslint-config-prettier': '^9.1.0',
-      'eslint-plugin-prettier': '^5.1.2',
-      prettier: '^3.1.1',
-      'vitest': '^1.1.0',
-      '@vitest/ui': '^1.1.0',
-      '@vitest/coverage-v8': '^1.1.0'
+      'eslint-plugin-prettier': '^6.0.0',
+      prettier: '^3.3.3',
+      'vitest': '^2.1.3',
+      '@vitest/ui': '^2.1.3',
+      '@vitest/coverage-v8': '^2.1.3'
     }
   };
 
@@ -318,6 +318,9 @@ describe('AppService', () => {
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
     await generateMongoDBModule(srcPath, config);
   }
+
+  // Create deployment files
+  await generateBackendDeployment(backendPath, config);
 }
 
 async function generatePrismaConfig(backendPath: string, config: ProjectConfig): Promise<void> {
@@ -396,5 +399,23 @@ export const UserSchema = SchemaFactory.createForClass(User);
 `;
 
   await fs.writeFile(path.join(schemasPath, 'user.schema.ts'), userSchema);
+}
+
+async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+`;
+
+  await fs.writeFile(path.join(backendPath, 'render.yaml'), renderYaml);
 }
 

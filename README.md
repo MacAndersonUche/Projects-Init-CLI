@@ -5,11 +5,13 @@ A powerful CLI tool to initialize monorepo projects with customizable frontend, 
 ## Features
 
 ### Frontend Options
+
 - **Next.js** - React framework with Tailwind CSS
 - **React** - React with Vite and Tailwind CSS
 - **HTML** - Plain HTML with Tailwind CSS and Vite
 
 ### Backend Options
+
 - **Express.js** - Node.js web framework
 - **NestJS** - Progressive Node.js framework
 - **FastAPI** - Modern Python web framework
@@ -17,19 +19,30 @@ A powerful CLI tool to initialize monorepo projects with customizable frontend, 
 - **AWS SAM** - Serverless Application Model
 
 ### Storage Options
+
 - **CDK Database** - Create database using AWS CDK
 - **Local SQLite** - SQLite database for local development
 - **External Database URL** - Connect to existing database
 
 ### Database Types
+
 - **SQL**: Raw SQL or Prisma ORM
 - **NoSQL**: DynamoDB or MongoDB
 
 ### API Types (for Express/NestJS)
+
 - **REST API**
 - **GraphQL**
 
 ## Installation
+
+### Global Installation
+
+```bash
+npm install -g projects-init-cli
+```
+
+### Local Installation
 
 ```bash
 npm install
@@ -37,10 +50,10 @@ npm run build
 npm link
 ```
 
-Or use directly with `npx`:
+### Use with npx (No Installation Required)
 
 ```bash
-npx projects-init
+npx projects-init-cli
 ```
 
 ## Usage
@@ -52,6 +65,7 @@ projects-init
 ```
 
 The tool will guide you through interactive prompts to select:
+
 1. Project name
 2. Frontend framework
 3. Backend framework
@@ -111,4 +125,3 @@ npm run dev
 ## License
 
 MIT
-

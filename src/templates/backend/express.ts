@@ -4,57 +4,57 @@ import { ProjectConfig } from '../../types';
 
 export async function generateExpress(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
-    express: '^4.18.2',
+    express: '^4.21.1',
     cors: '^2.8.5',
-    dotenv: '^16.3.1'
+    dotenv: '^16.4.5'
   };
 
   const devDependencies: Record<string, string> = {
-    '@types/express': '^4.17.21',
+    '@types/express': '^5.0.0',
     '@types/cors': '^2.8.17',
-    '@types/node': '^20.10.6',
-    typescript: '^5.3.3',
+    '@types/node': '^22.7.5',
+    typescript: '^5.6.3',
     'ts-node': '^10.9.2',
-    nodemon: '^3.0.2',
-    'vitest': '^1.1.0',
-    '@vitest/ui': '^1.1.0',
-    'supertest': '^6.3.3',
+    nodemon: '^3.1.7',
+    'vitest': '^2.1.3',
+    '@vitest/ui': '^2.1.3',
+    'supertest': '^7.0.0',
     '@types/supertest': '^6.0.2',
-    '@vitest/coverage-v8': '^1.1.0'
+    '@vitest/coverage-v8': '^2.1.3'
   };
 
   // Add database dependencies
   if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^5.7.1';
-      devDependencies['prisma'] = '^5.7.1';
+      dependencies['@prisma/client'] = '^6.0.1';
+      devDependencies['prisma'] = '^6.0.1';
     } else if (config.databaseType === 'sql') {
-      dependencies['better-sqlite3'] = '^9.2.2';
-      devDependencies['@types/better-sqlite3'] = '^7.6.8';
+      dependencies['better-sqlite3'] = '^11.7.0';
+      devDependencies['@types/better-sqlite3'] = '^7.6.9';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['mongoose'] = '^8.0.3';
+      dependencies['mongoose'] = '^8.8.4';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.490.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.490.0';
+      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^5.7.1';
-      devDependencies['prisma'] = '^5.7.1';
+      dependencies['@prisma/client'] = '^6.0.1';
+      devDependencies['prisma'] = '^6.0.1';
     } else if (config.databaseType === 'sql') {
-      dependencies['pg'] = '^8.11.3';
-      devDependencies['@types/pg'] = '^8.10.9';
+      dependencies['pg'] = '^8.13.1';
+      devDependencies['@types/pg'] = '^8.11.10';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['mongoose'] = '^8.0.3';
+      dependencies['mongoose'] = '^8.8.4';
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.490.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.490.0';
+      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
     }
   }
 
   // Add API type dependencies
   if (config.apiType === 'graphql') {
-    dependencies['graphql'] = '^16.8.1';
+    dependencies['graphql'] = '^16.9.0';
     dependencies['express-graphql'] = '^0.12.0';
     devDependencies['@types/express-graphql'] = '^0.12.0';
   }
@@ -231,6 +231,27 @@ ${config.apiType === 'rest' ? `  it('should return API welcome message', async (
 `;
 
   await fs.writeFile(path.join(testPath, 'api.test.ts'), testFile);
+
+  // Create deployment files
+  await generateBackendDeployment(backendPath, config);
+}
+
+async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+`;
+
+  await fs.writeFile(path.join(backendPath, 'render.yaml'), renderYaml);
 }
 
 async function generatePrismaConfig(backendPath: string, config: ProjectConfig): Promise<void> {

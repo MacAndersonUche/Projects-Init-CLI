@@ -17,29 +17,29 @@ export async function generateReact(frontendPath: string, config: ProjectConfig)
       'test:coverage': 'vitest --coverage'
     },
     dependencies: {
-      react: '^18.2.0',
-      'react-dom': '^18.2.0'
+      react: '^18.3.1',
+      'react-dom': '^18.3.1'
     },
     devDependencies: {
-      '@types/react': '^18.2.45',
-      '@types/react-dom': '^18.2.18',
-      '@typescript-eslint/eslint-plugin': '^6.15.0',
-      '@typescript-eslint/parser': '^6.15.0',
-      '@vitejs/plugin-react': '^4.2.1',
-      eslint: '^8.56.0',
-      'eslint-plugin-react-hooks': '^4.6.0',
-      'eslint-plugin-react-refresh': '^0.4.5',
-      typescript: '^5.3.3',
-      vite: '^5.0.8',
-      'tailwindcss': '^3.4.0',
-      'postcss': '^8.4.32',
-      'autoprefixer': '^10.4.16',
-      'vitest': '^1.1.0',
-      '@vitest/ui': '^1.1.0',
-      '@testing-library/react': '^14.1.2',
-      '@testing-library/jest-dom': '^6.1.5',
-      'jsdom': '^23.0.1',
-      '@vitest/coverage-v8': '^1.1.0'
+      '@types/react': '^18.3.12',
+      '@types/react-dom': '^18.3.1',
+      '@typescript-eslint/eslint-plugin': '^8.15.0',
+      '@typescript-eslint/parser': '^8.15.0',
+      '@vitejs/plugin-react': '^4.3.2',
+      eslint: '^9.15.0',
+      'eslint-plugin-react-hooks': '^5.1.0',
+      'eslint-plugin-react-refresh': '^0.4.14',
+      typescript: '^5.6.3',
+      vite: '^6.0.1',
+      'tailwindcss': '^3.4.14',
+      'postcss': '^8.4.47',
+      'autoprefixer': '^10.4.20',
+      'vitest': '^2.1.3',
+      '@vitest/ui': '^2.1.3',
+      '@testing-library/react': '^16.0.1',
+      '@testing-library/jest-dom': '^6.6.3',
+      'jsdom': '^25.0.1',
+      '@vitest/coverage-v8': '^2.1.3'
     }
   };
 
@@ -237,5 +237,40 @@ describe('App', () => {
 `;
 
   await fs.writeFile(path.join(testPath, 'App.test.tsx'), testExample);
+
+  // Create deployment files
+  await generateFrontendDeployment(frontendPath, config);
+}
+
+async function generateFrontendDeployment(frontendPath: string, config: ProjectConfig): Promise<void> {
+  // Netlify configuration
+  const netlifyToml = `[build]
+  command = "npm run build"
+  publish = "dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "20"
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'netlify.toml'), netlifyToml);
+
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_ENV
+        value: production
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'render.yaml'), renderYaml);
 }
 

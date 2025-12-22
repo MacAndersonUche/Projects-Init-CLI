@@ -3,31 +3,35 @@ import path from 'path';
 import { ProjectConfig } from '../../types';
 
 export async function generateCDK(backendPath: string, config: ProjectConfig): Promise<void> {
+  const appName = config.projectName.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  const stackName = config.projectName.replace(/[^a-zA-Z0-9]/g, '');
   const packageJson = {
-    name: `${config.projectName}-backend`,
-    version: '1.0.0',
+    name: `${appName}-backend`,
+    version: '0.1.0',
+    bin: {
+      [appName]: 'bin/app.js'
+    },
     scripts: {
       build: 'tsc',
       watch: 'tsc -w',
-      test: 'jest',
-      cdk: 'cdk',
-      'cdk:deploy': 'cdk deploy',
-      'cdk:synth': 'cdk synth',
-      'cdk:diff': 'cdk diff'
+      test: 'vitest',
+      'test:ui': 'vitest --ui',
+      'test:coverage': 'vitest --coverage',
+      cdk: 'cdk'
     },
     dependencies: {
-      'aws-cdk-lib': '^2.100.0',
-      constructs: '^10.3.0'
+      'aws-cdk-lib': '^2.169.0',
+      constructs: '^10.4.2',
+      'source-map-support': '^0.5.21'
     },
     devDependencies: {
-      '@types/node': '^20.10.6',
-      'aws-cdk': '^2.100.0',
+      '@types/node': '^22.7.5',
+      'aws-cdk': '^2.169.0',
       'ts-node': '^10.9.2',
-      typescript: '^5.3.3',
-      '@types/jest': '^29.5.11',
-      jest: '^29.7.0',
-      'ts-jest': '^29.1.1',
-      'source-map-support': '^0.5.21'
+      'typescript': '^5.6.3',
+      'vitest': '^2.1.3',
+      '@vitest/ui': '^2.1.3',
+      '@vitest/coverage-v8': '^2.1.3'
     }
   };
 
@@ -52,30 +56,6 @@ export async function generateCDK(backendPath: string, config: ProjectConfig): P
     },
     context: {
       '@aws-cdk/aws-lambda:recognizeLayerVersion': true,
-      '@aws-cdk/core:checkSecretUsage': true,
-      '@aws-cdk/core:target-partitions': ['aws', 'aws-cn'],
-      '@aws-cdk-containers/ecs-service-extensions:enableDefaultLogDriver': true,
-      '@aws-cdk/aws-ec2:uniqueImdsv2TemplateName': true,
-      '@aws-cdk/aws-ecs:arnFormatIncludesClusterName': true,
-      '@aws-cdk/aws-iam:minimizePolicies': true,
-      '@aws-cdk/core:validateSnapshotRemovalPolicy': true,
-      '@aws-cdk/aws-codepipeline:crossAccountKeyAliasStackSafeResourceName': true,
-      '@aws-cdk/aws-s3:createDefaultLoggingPolicy': true,
-      '@aws-cdk/aws-sns-subscriptions:restrictSqsDescryption': true,
-      '@aws-cdk/aws-apigateway:disableCloudWatchRole': true,
-      '@aws-cdk/core:enablePartitionLiterals': true,
-      '@aws-cdk/aws-events:eventsTargetQueueSameAccount': true,
-      '@aws-cdk/aws-iam:standardizedServicePrincipals': true,
-      '@aws-cdk/aws-ecs:disableExplicitDeploymentControllerForCircuitBreaker': true,
-      '@aws-cdk/aws-iam:importedRoleStackSafeDefaultPolicyName': true,
-      '@aws-cdk/aws-s3:serverAccessLogsUseBucketPolicy': true,
-      '@aws-cdk/aws-route53-patters:useCertificate': true,
-      '@aws-cdk/customresources:installLatestAwsSdkDefault': false,
-      '@aws-cdk/aws-rds:databaseProxyUniqueResourceName': true,
-      '@aws-cdk/aws-codedeploy:removeAlarmsFromDeploymentGroup': true,
-      '@aws-cdk/aws-apigateway:authorizerChangeDeploymentLogicalId': true,
-      '@aws-cdk/aws-ec2:launchTemplateDefaultUserData': true,
-      '@aws-cdk/aws-ecs:removeDefaultDeploymentAlarm': true
     }
   };
 
@@ -118,10 +98,10 @@ export async function generateCDK(backendPath: string, config: ProjectConfig): P
   const appTs = `#!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { ${config.projectName}Stack } from '../lib/${config.projectName}-stack';
+import { ${stackName}Stack } from '../lib/${stackName}-stack';
 
 const app = new cdk.App();
-new ${config.projectName}Stack(app, '${config.projectName}Stack', {
+new ${stackName}Stack(app, '${stackName}Stack', {
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
     region: process.env.CDK_DEFAULT_REGION,
@@ -149,7 +129,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
   }
 
   stackContent += `
-export class ${config.projectName}Stack extends cdk.Stack {
+export class ${stackName}Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
@@ -198,7 +178,7 @@ export class ${config.projectName}Stack extends cdk.Stack {
 }
 `;
 
-  await fs.writeFile(path.join(libPath, `${config.projectName}-stack.ts`), stackContent);
+  await fs.writeFile(path.join(libPath, `${stackName}-stack.ts`), stackContent);
 
   // Create README
   const readme = `# CDK Backend
@@ -209,12 +189,38 @@ This is an AWS CDK project for deploying infrastructure.
 
 - \`npm run build\`   compile typescript to js
 - \`npm run watch\`   watch for changes and compile
-- \`npm run test\`    perform the jest unit tests
-- \`cdk deploy\`      deploy this stack to your default AWS account/region
-- \`cdk diff\`        compare deployed stack with current state
-- \`cdk synth\`       emits the synthesized CloudFormation template
+- \`npm run test\`    run vitest tests
+- \`npm run test:ui\` run tests with UI
+- \`npm run test:coverage\` run tests with coverage
+- \`npm run cdk deploy\`      deploy this stack to your default AWS account/region
+- \`npm run cdk diff\`        compare deployed stack with current state
+- \`npm run cdk synth\`       emits the synthesized CloudFormation template
 `;
 
   await fs.writeFile(path.join(backendPath, 'README.md'), readme);
+
+  // Create test directory with example test
+  const testPath = path.join(backendPath, 'test');
+  await fs.ensureDir(testPath);
+
+  const testFile = `import { describe, it, expect } from 'vitest';
+import * as cdk from 'aws-cdk-lib';
+import { Template } from 'aws-cdk-lib/assertions';
+import { ${stackName}Stack } from '../lib/${stackName}-stack';
+
+describe('${stackName}Stack', () => {
+  it('has required resources', () => {
+    const app = new cdk.App();
+    const stack = new ${stackName}Stack(app, 'MyTestStack');
+    const template = Template.fromStack(stack);
+
+    // Add your test assertions here
+    // Example: template.resourceCountIs('AWS::DynamoDB::Table', 1);
+    expect(template).toBeDefined();
+  });
+});
+`;
+
+  await fs.writeFile(path.join(testPath, `${stackName}-stack.test.ts`), testFile);
 }
 

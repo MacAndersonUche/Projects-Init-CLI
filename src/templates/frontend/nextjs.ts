@@ -17,27 +17,27 @@ export async function generateNextJS(frontendPath: string, config: ProjectConfig
       'test:coverage': 'vitest --coverage'
     },
     dependencies: {
-      react: '^18.2.0',
-      'react-dom': '^18.2.0',
-      next: '^14.0.4'
+      react: '^18.3.1',
+      'react-dom': '^18.3.1',
+      next: '^15.0.3'
     },
     devDependencies: {
-      '@types/node': '^20.10.6',
-      '@types/react': '^18.2.45',
-      '@types/react-dom': '^18.2.18',
-      typescript: '^5.3.3',
-      'tailwindcss': '^3.4.0',
-      'postcss': '^8.4.32',
-      'autoprefixer': '^10.4.16',
-      'eslint': '^8.56.0',
-      'eslint-config-next': '^14.0.4',
-      'vitest': '^1.1.0',
-      '@vitest/ui': '^1.1.0',
-      '@testing-library/react': '^14.1.2',
-      '@testing-library/jest-dom': '^6.1.5',
-      '@vitejs/plugin-react': '^4.2.1',
-      'jsdom': '^23.0.1',
-      '@vitest/coverage-v8': '^1.1.0'
+      '@types/node': '^22.7.5',
+      '@types/react': '^18.3.12',
+      '@types/react-dom': '^18.3.1',
+      typescript: '^5.6.3',
+      'tailwindcss': '^3.4.14',
+      'postcss': '^8.4.47',
+      'autoprefixer': '^10.4.20',
+      'eslint': '^9.15.0',
+      'eslint-config-next': '^15.0.3',
+      'vitest': '^2.1.3',
+      '@vitest/ui': '^2.1.3',
+      '@testing-library/react': '^16.0.1',
+      '@testing-library/jest-dom': '^6.6.3',
+      '@vitejs/plugin-react': '^4.3.2',
+      'jsdom': '^25.0.1',
+      '@vitest/coverage-v8': '^2.1.3'
     }
   };
 
@@ -228,5 +228,38 @@ describe('Home Page', () => {
 `;
 
   await fs.writeFile(path.join(testPath, 'page.test.tsx'), testExample);
+
+  // Create deployment files
+  await generateFrontendDeployment(frontendPath, config);
+}
+
+async function generateFrontendDeployment(frontendPath: string, config: ProjectConfig): Promise<void> {
+  // Netlify configuration
+  const netlifyToml = `[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "20"
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'netlify.toml'), netlifyToml);
+
+  // Render configuration
+  const renderYaml = `services:
+  - type: web
+    name: ${config.projectName}-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+`;
+
+  await fs.writeFile(path.join(frontendPath, 'render.yaml'), renderYaml);
 }
 

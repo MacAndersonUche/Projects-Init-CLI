@@ -1,7 +1,5 @@
 import { ProjectConfig } from '../types';
-import { generateNextJS } from './frontend/nextjs';
-import { generateReact } from './frontend/react';
-import { generateHTML } from './frontend/html';
+import { generateNextJS, generateReact, generateHTML } from './frontend';
 import { generateExpress } from './backend/express';
 import { generateNestJS } from './backend/nestjs';
 import { generateFastAPI } from './backend/fastapi';
@@ -199,7 +197,7 @@ jobs:
   await fs.writeFile(path.join(workflowsPath, 'ci.yml'), ciWorkflow);
 
   // Deployment workflow
-  const deployWorkflow = `name: Deploy
+  let deployWorkflow = `name: Deploy
 
 on:
   push:
@@ -207,8 +205,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  deploy-frontend:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
 
     steps:
     - uses: actions/checkout@v4
@@ -220,26 +219,127 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --workspace=frontend
 
-    - name: Build project
-      run: npm run build --workspaces --if-present
+    - name: Build frontend
+      run: npm run build --workspace=frontend
 
-    - name: Deploy Frontend
-      run: |
-        echo "Add your frontend deployment steps here"
-        # Example for Vercel:
-        # npm install -g vercel
-        # vercel --prod --token \${{ secrets.VERCEL_TOKEN }}
+    - name: Deploy to Netlify
+      uses: netlify/actions/cli@master
+      env:
+        NETLIFY_AUTH_TOKEN: \${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: \${{ secrets.NETLIFY_SITE_ID }}
+      with:
+        args: deploy --dir=frontend/.next --prod
       continue-on-error: true
 
-    - name: Deploy Backend
+    - name: Deploy to Render
       run: |
-        echo "Add your backend deployment steps here"
-        # Example for Railway/Render:
-        # Add deployment commands based on your backend choice
+        echo "Deploy to Render by connecting your GitHub repository"
+        echo "Or use: render deploy --service=\${{ secrets.RENDER_SERVICE_ID }}"
+      continue-on-error: true
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+`;
+
+  // Add backend deployment steps based on backend type
+  if (config.backend === 'cdk') {
+    deployWorkflow += `
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --workspace=backend
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: \${{ secrets.AWS_REGION || 'us-east-1' }}
+
+    - name: Build CDK
+      run: npm run build --workspace=backend
+
+    - name: Deploy CDK Stack
+      run: |
+        cd backend
+        npm run cdk deploy -- --require-approval never --all
+`;
+  } else if (config.backend === 'sam') {
+    deployWorkflow += `
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --workspace=backend
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install SAM CLI
+      run: |
+        pip install aws-sam-cli
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: \${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: \${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: \${{ secrets.AWS_REGION || 'us-east-1' }}
+
+    - name: Build SAM application
+      run: |
+        cd backend
+        sam build
+
+    - name: Deploy SAM application
+      run: |
+        cd backend
+        sam deploy --no-confirm-changeset --no-fail-on-empty-changeset
+`;
+  } else {
+    deployWorkflow += `
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --workspace=backend
+
+    - name: Build backend
+      run: npm run build --workspace=backend
+
+    - name: Deploy to Render
+      run: |
+        echo "Deploy to Render by connecting your GitHub repository"
+        echo "Or use: render deploy --service=\${{ secrets.RENDER_SERVICE_ID }}"
       continue-on-error: true
 `;
+  }
+
+  deployWorkflow += `\n`;
 
   await fs.writeFile(path.join(workflowsPath, 'deploy.yml'), deployWorkflow);
 }

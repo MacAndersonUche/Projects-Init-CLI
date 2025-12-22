@@ -3,6 +3,24 @@ import path from 'path';
 import { ProjectConfig } from '../../types';
 
 export async function generateSAM(backendPath: string, config: ProjectConfig): Promise<void> {
+  // Create root package.json with SAM scripts
+  const rootPackageJson = {
+    name: `${config.projectName}-backend`,
+    version: '1.0.0',
+    private: true,
+    scripts: {
+      'build': 'sam build',
+      'deploy': 'sam deploy',
+      'deploy:guided': 'sam deploy --guided',
+      'local': 'sam local start-api',
+      'validate': 'sam validate',
+      'synth': 'sam build && sam deploy --no-execute'
+    },
+    devDependencies: {}
+  };
+
+  await fs.writeJSON(path.join(backendPath, 'package.json'), rootPackageJson, { spaces: 2 });
+
   // Create template.yaml
   let templateContent = `AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
@@ -83,13 +101,16 @@ Resources:
     version: '1.0.0',
     description: 'Hello World SAM Lambda function',
     main: 'app.js',
+    scripts: {
+      test: 'node tests/unit/test-handler.js'
+    },
     dependencies: {}
   };
 
   if (config.databaseType === 'nosql') {
     packageJson.dependencies = {
-      '@aws-sdk/client-dynamodb': '^3.490.0',
-      '@aws-sdk/lib-dynamodb': '^3.490.0'
+      '@aws-sdk/client-dynamodb': '^3.699.0',
+      '@aws-sdk/lib-dynamodb': '^3.699.0'
     };
   }
 
@@ -144,6 +165,55 @@ exports.lambdaHandler = async (event) => {
 
   await fs.writeFile(path.join(helloWorldPath, 'app.js'), appJs);
 
+  // Create test directory and test file
+  const testsPath = path.join(helloWorldPath, 'tests', 'unit');
+  await fs.ensureDir(testsPath);
+
+  const testFile = `import { describe, it, expect } from 'vitest';
+const app = require('../../app');
+
+describe('Tests index', () => {
+    it('verifies successful response', async () => {
+        const event = {
+            httpMethod: 'GET',
+            path: '/hello'
+        };
+        const context = {};
+        
+        const result = await app.lambdaHandler(event, context);
+        
+        expect(result).toBeDefined();
+        expect(result.statusCode).toBe(200);
+        
+        const response = JSON.parse(result.body);
+        expect(response.message).toBeDefined();
+    });
+});
+`;
+
+  await fs.writeFile(path.join(testsPath, 'test-handler.js'), testFile);
+
+  // Create package.json for tests
+  const testPackageJson = {
+    name: 'hello-world-tests',
+    version: '1.0.0',
+    scripts: {
+      test: 'vitest',
+      'test:ui': 'vitest --ui',
+      'test:coverage': 'vitest --coverage'
+    },
+    dependencies: {
+      'aws-sdk': '^2.814.0'
+    },
+    devDependencies: {
+      'vitest': '^2.1.3',
+      '@vitest/ui': '^2.1.3',
+      '@vitest/coverage-v8': '^2.1.3'
+    }
+  };
+
+  await fs.writeJSON(path.join(testsPath, 'package.json'), testPackageJson, { spaces: 2 });
+
   // Create samconfig.toml
   const samConfig = `version = 0.1
 
@@ -180,21 +250,23 @@ This is an AWS SAM project for serverless deployment.
 ## Build and Deploy
 
 \`\`\`bash
-sam build
-sam deploy --guided
+npm run build
+npm run deploy:guided
 \`\`\`
 
 ## Local Development
 
 \`\`\`bash
-sam local start-api
+npm run local
 \`\`\`
 
 ## Useful Commands
 
-- \`sam build\` - Build your application
-- \`sam local start-api\` - Start local API Gateway
-- \`sam deploy --guided\` - Deploy your application
+- \`npm run build\` - Build your application
+- \`npm run local\` - Start local API Gateway
+- \`npm run deploy:guided\` - Deploy your application with guided prompts
+- \`npm run deploy\` - Deploy your application
+- \`npm run validate\` - Validate SAM template
 - \`sam logs -n HelloWorldFunction --stack-name ${config.projectName} --tail\` - View logs
 `;
 
