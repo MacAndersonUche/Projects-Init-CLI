@@ -1,0 +1,39 @@
+{
+  "name": "projects-init-cli",
+  "version": "1.0.0",
+  "description": "CLI tool to initialize projects with customizable frontend, backend, and storage options",
+  "main": "dist/index.js",
+  "bin": {
+    "projects-init": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "keywords": [
+    "cli",
+    "scaffold",
+    "project-generator",
+    "nextjs",
+    "react",
+    "express",
+    "nestjs",
+    "fastapi"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "inquirer": "^9.2.12",
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/node": "^20.10.6",
+    "@types/fs-extra": "^11.0.4",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  }
+}
