@@ -59,12 +59,16 @@ jobs:
 
   publish:
     needs: test
+    # Always attempt publish on mainline pushes / releases / manual dispatch.
+    # The "already published" step no-ops when the version is already on npm.
     if: |
-      github.event_name == 'release' ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish == true) ||
-      (github.event_name == 'push' &&
-       (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main') &&
-       contains(toJSON(github.event.head_commit.modified), 'package.json'))
+      always() &&
+      needs.test.result == 'success' &&
+      (
+        github.event_name == 'release' ||
+        (github.event_name == 'workflow_dispatch' && (inputs.publish == true || inputs.publish == 'true')) ||
+        (github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'))
+      )
     runs-on: ubuntu-latest
 
     steps:
