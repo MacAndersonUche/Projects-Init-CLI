@@ -1,6 +1,10 @@
 name: Publish to NPM
 
 on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'package.json'
   release:
     types: [created]
   workflow_dispatch:
@@ -27,6 +31,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use Node.js
         uses: actions/setup-node@v4
@@ -57,7 +62,21 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to $(node -p "require('./package.json').version")" || true
 
+      - name: Check if version already published
+        id: version_check
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          if npm view "projects-init-cli@${VERSION}" version >/dev/null 2>&1; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "Version ${VERSION} is already on npm — skipping publish"
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "Version ${VERSION} is not on npm — will publish"
+          fi
+
       - name: Publish to NPM
+        if: steps.version_check.outputs.already_published != 'true'
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -65,28 +84,38 @@ jobs:
       - name: Get default branch
         id: get_branch
         run: |
-          # Get the default branch from the repository
           DEFAULT_BRANCH=$(git remote show origin | grep "HEAD branch" | awk '{print $NF}')
           if [ -z "$DEFAULT_BRANCH" ]; then
-            # Fallback: check which branch exists
             if git ls-remote --heads origin main | grep -q main; then
               DEFAULT_BRANCH="main"
             elif git ls-remote --heads origin master | grep -q master; then
               DEFAULT_BRANCH="master"
             else
-              # Last resort: use the branch where workflow is running
               DEFAULT_BRANCH="${{ github.ref_name }}"
             fi
           fi
-          echo "branch=${DEFAULT_BRANCH}" >> $GITHUB_OUTPUT
+          echo "branch=${DEFAULT_BRANCH}" >> "$GITHUB_OUTPUT"
           echo "Using branch: ${DEFAULT_BRANCH}"
 
       - name: Create Git tag and push
-        if: github.event_name == 'workflow_dispatch'
+        if: |
+          steps.version_check.outputs.already_published != 'true' &&
+          (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION="${{ steps.version_check.outputs.version }}"
           BRANCH="${{ steps.get_branch.outputs.branch }}"
-          echo "Pushing version ${VERSION} to branch: ${BRANCH}"
-          git tag "v${VERSION}"
-          git push origin ${BRANCH} --tags
-          git push origin HEAD:${BRANCH}
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "Tag v${VERSION} already exists"
+          else
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+            echo "Created and pushed tag v${VERSION}"
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Pushing version ${VERSION} to branch: ${BRANCH}"
+            git push origin HEAD:"${BRANCH}"
+          fi
