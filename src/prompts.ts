@@ -61,12 +61,17 @@ export async function promptUser(): Promise<ProjectConfig> {
       choices: [
         { name: 'CDK to create database', value: 'cdk' },
         { name: 'Local SQLite (Node.js)', value: 'local-sqlite' },
-        { name: 'MongoDB', value: 'mongodb' },
+        { name: 'Local MongoDB', value: 'mongodb-local' },
+        { name: 'MongoDB (external / Atlas)', value: 'mongodb-external' },
         { name: 'Local JSON file', value: 'local-json' },
         { name: 'External database URL (SQL / Postgres / etc.)', value: 'external-url' }
       ]
     }
   ]);
+
+  const isMongoLocal = answers.storage === 'mongodb-local';
+  const isMongoExternal = answers.storage === 'mongodb-external';
+  const storage = isMongoLocal || isMongoExternal ? 'mongodb' : answers.storage;
 
   const config: ProjectConfig = {
     projectName: answers.projectName,
@@ -74,25 +79,13 @@ export async function promptUser(): Promise<ProjectConfig> {
     packageManager: answers.packageManager,
     frontend: answers.frontend,
     backend: answers.backend,
-    storage: answers.storage
+    storage
   };
 
   if (config.storage === 'mongodb') {
     config.databaseType = 'nosql';
     config.nosqlOption = 'mongodb';
-
-    const mongoAnswer = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'mongodbConnection',
-        message: 'How will MongoDB be connected?',
-        choices: [
-          { name: 'Local MongoDB (localhost)', value: 'local' },
-          { name: 'External / Atlas / hosted URL', value: 'external' }
-        ]
-      }
-    ]);
-    config.mongodbConnection = mongoAnswer.mongodbConnection;
+    config.mongodbConnection = isMongoExternal ? 'external' : 'local';
 
     if (config.mongodbConnection === 'external') {
       const urlAnswer = await inquirer.prompt([
