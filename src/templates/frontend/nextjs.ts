@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { FRONTEND_PACKAGES, PKG, RECOMMENDED_NODE } from '../shared/constants';
 
 export async function generateNextJS(frontendPath: string, config: ProjectConfig): Promise<void> {
   const packageJson = {
@@ -17,27 +18,27 @@ export async function generateNextJS(frontendPath: string, config: ProjectConfig
       'test:coverage': 'vitest --coverage'
     },
     dependencies: {
-      react: '^18.3.1',
-      'react-dom': '^18.3.1',
-      next: '^15.0.3'
+      react: PKG.react,
+      'react-dom': PKG['react-dom'],
+      next: PKG.next
     },
     devDependencies: {
-      '@types/node': '^22.7.5',
-      '@types/react': '^18.3.12',
-      '@types/react-dom': '^18.3.1',
-      typescript: '^5.6.3',
-      'tailwindcss': '^3.4.14',
-      'postcss': '^8.4.47',
-      'autoprefixer': '^10.4.20',
-      'eslint': '^9.15.0',
-      'eslint-config-next': '^15.0.3',
-      'vitest': '^2.1.3',
-      '@vitest/ui': '^2.1.3',
-      '@testing-library/react': '^16.0.1',
-      '@testing-library/jest-dom': '^6.6.3',
-      '@vitejs/plugin-react': '^4.3.2',
-      'jsdom': '^25.0.1',
-      '@vitest/coverage-v8': '^2.1.3'
+      '@types/node': PKG['@types/node'],
+      '@types/react': PKG['@types/react'],
+      '@types/react-dom': PKG['@types/react-dom'],
+      typescript: PKG.typescript,
+      'tailwindcss': PKG.tailwindcss,
+      'postcss': PKG.postcss,
+      'autoprefixer': PKG.autoprefixer,
+      'eslint': FRONTEND_PACKAGES.eslint,
+      'eslint-config-next': PKG['eslint-config-next'],
+      'vitest': FRONTEND_PACKAGES.vitest,
+      '@vitest/ui': FRONTEND_PACKAGES['@vitest/ui'],
+      '@testing-library/react': PKG['@testing-library/react'],
+      '@testing-library/jest-dom': PKG['@testing-library/jest-dom'],
+      '@vitejs/plugin-react': FRONTEND_PACKAGES['@vitejs/plugin-react'],
+      'jsdom': PKG.jsdom,
+      '@vitest/coverage-v8': FRONTEND_PACKAGES['@vitest/coverage-v8']
     }
   };
 
@@ -243,7 +244,7 @@ async function generateFrontendDeployment(frontendPath: string, config: ProjectC
   package = "@netlify/plugin-nextjs"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "${RECOMMENDED_NODE}"
 `;
 
   await fs.writeFile(path.join(frontendPath, 'netlify.toml'), netlifyToml);

@@ -5,7 +5,7 @@ import { generateNestJS } from './backend/nestjs';
 import { generateFastAPI } from './backend/fastapi';
 import { generateCDK } from './backend/cdk';
 import { generateSAM } from './backend/sam';
-import { ROOT_DEV_DEPENDENCIES } from './shared/constants';
+import { RECOMMENDED_NODE, ROOT_DEV_DEPENDENCIES } from './shared/constants';
 import { writeNodeVersionFiles, withEngines } from './shared/node-config';
 import { writeRenovateConfig } from './shared/renovate';
 import { ecsDeployWorkflowSteps } from './shared/ecs';
@@ -22,6 +22,12 @@ import {
   workspaceRun,
 } from './shared/package-manager';
 import { storageLabel, writePnpmWorkspace } from './shared/project-docs';
+import {
+  e2eDevDependencies,
+  performanceDevDependencies,
+  rootTestScripts,
+  writeRootTestTooling,
+} from './shared/test-suites';
 import fs from 'fs-extra';
 import path from 'path';
 export async function generateFrontend(projectPath: string, config: ProjectConfig): Promise<void> {
@@ -66,6 +72,12 @@ export async function generateBackend(projectPath: string, config: ProjectConfig
 
 export async function generateMonorepoConfig(projectPath: string, config: ProjectConfig): Promise<void> {
   const pmField = packageManagerVersionField(config.packageManager);
+  const testScripts = rootTestScripts(config);
+  const rootDevDeps = {
+    ...ROOT_DEV_DEPENDENCIES,
+    ...e2eDevDependencies(config),
+    ...performanceDevDependencies(config),
+  };
   const rootPackageJson = withEngines({
     name: config.projectName,
     version: '1.0.0',
@@ -75,14 +87,15 @@ export async function generateMonorepoConfig(projectPath: string, config: Projec
     scripts: {
       dev: rootDevScript(config.packageManager, config.projectName),
       build: workspacesRun(config.packageManager, 'build'),
-      test: workspacesRun(config.packageManager, 'test'),
       lint: workspacesRun(config.packageManager, 'lint'),
+      ...testScripts,
     },
-    devDependencies: ROOT_DEV_DEPENDENCIES,
+    devDependencies: rootDevDeps,
   });
 
   await fs.writeJSON(path.join(projectPath, 'package.json'), rootPackageJson, { spaces: 2 });
   await writeNodeVersionFiles(projectPath);
+  await writeRootTestTooling(projectPath, config);
   if (config.packageManager === 'pnpm') {
     await writePnpmWorkspace(projectPath);
   }
@@ -117,19 +130,19 @@ ${config.projectName}/
 ├── frontend/          # ${config.frontend === 'nextjs' ? 'Next.js' : config.frontend === 'react' ? 'React' : 'HTML'} + Tailwind
 ├── backend/           # ${backendLabel}
 ├── docs/              # Project documentation (see backend/docs for API spec)
-├── .nvmrc             # Node.js ${'20'} LTS
+├── .nvmrc             # Node.js ${RECOMMENDED_NODE} LTS
 ├── renovate.json      # Automated dependency updates
 └── .github/workflows/ # CI/CD
 \`\`\`
 
 ## Prerequisites
 
-- **Node.js 20 LTS** or **22 LTS** (see \`.nvmrc\` — Node 21 is not supported by this stack)
+- **Node.js ${RECOMMENDED_NODE} LTS** (see \`.nvmrc\`)
 - ${packageManagerLabel(config.packageManager)} (workspaces monorepo)
 
 \`\`\`bash
-nvm use   # or: fnm use / volta install node@20
-node -v   # should print v20.x or v22.x
+nvm use   # or: fnm use / volta install node@${RECOMMENDED_NODE}
+node -v   # should print v${RECOMMENDED_NODE}.x
 \`\`\`
 
 ## Getting started
@@ -179,7 +192,7 @@ ${config.apiType === 'rest' ? `- [\`backend/docs/openapi.yaml\`](backend/docs/op
     path.join(docsPath, 'CONTRIBUTING.md'),
     `# Contributing
 
-1. Use Node.js 20 or 22 (\`nvm use\`)
+1. Use Node.js ${RECOMMENDED_NODE} (\`nvm use\`)
 2. \`${installCommand(config.packageManager)}\` from the repo root (do not add a custom \`install\` lifecycle script)
 3. Create a feature branch
 4. \`${config.packageManager} test\` and \`${config.packageManager} run build\` before opening a PR
@@ -267,7 +280,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [${RECOMMENDED_NODE}.x]
 
     steps:
     - uses: actions/checkout@v4
@@ -306,7 +319,7 @@ ${ciExtra}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '${RECOMMENDED_NODE}.x'
         cache: '${cache}'
 
     - name: Install dependencies
@@ -340,7 +353,7 @@ ${ciExtra}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '${RECOMMENDED_NODE}.x'
         cache: '${cache}'
 
     - name: Install dependencies
@@ -378,7 +391,7 @@ ${ciExtra}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '${RECOMMENDED_NODE}.x'
         cache: '${cache}'
 
     - name: Install dependencies
@@ -407,7 +420,7 @@ ${ciExtra}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '${RECOMMENDED_NODE}.x'
         cache: '${cache}'
 
     - name: Install dependencies
@@ -450,7 +463,7 @@ ${ciExtra}
     - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '20.x'
+        node-version: '${RECOMMENDED_NODE}.x'
         cache: '${cache}'
 
     - name: Install dependencies

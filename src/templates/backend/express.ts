@@ -1,80 +1,91 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
-import { BACKEND_PACKAGES } from '../shared/constants';
+import { PKG } from '../shared/constants';
 import { withEngines } from '../shared/node-config';
 import { writeOpenApiSpec } from '../shared/openapi';
 import { writeEcsDeploymentFiles } from '../shared/ecs';
 import { defaultMongoUrl } from '../shared/project-docs';
+import {
+  e2eDevDependencies,
+  hasTestSuite,
+  packageTestScripts,
+  performanceDevDependencies,
+  vitestDevDependencies,
+  writeBackendExtraTests,
+} from '../shared/test-suites';
 
 export async function generateExpress(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
-    express: '^4.21.1',
-    cors: '^2.8.5',
-    dotenv: '^16.4.5'
+    express: PKG.express,
+    cors: PKG.cors,
+    dotenv: PKG.dotenv
   };
 
   const devDependencies: Record<string, string> = {
-    '@types/express': '^5.0.0',
-    '@types/cors': '^2.8.17',
-    '@types/node': '^22.7.5',
-    typescript: '^5.6.3',
-    'ts-node': '^10.9.2',
-    nodemon: '^3.1.7',
-    'vitest': BACKEND_PACKAGES.vitest,
-    '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
-    '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8'],
-    supertest: '^7.0.0',
-    '@types/supertest': '^6.0.2'
+    '@types/express': PKG['@types/express'],
+    '@types/cors': PKG['@types/cors'],
+    '@types/node': PKG['@types/node'],
+    typescript: PKG.typescript,
+    'ts-node': PKG['ts-node'],
+    nodemon: PKG.nodemon,
+    ...vitestDevDependencies(config),
+    ...e2eDevDependencies(config),
+    ...performanceDevDependencies(config),
   };
+
+  if (hasTestSuite(config, 'unit') || hasTestSuite(config, 'integration')) {
+    devDependencies.supertest = PKG.supertest;
+    devDependencies['@types/supertest'] = PKG['@types/supertest'];
+  }
 
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
   } else if (config.storage === 'mongodb') {
-    dependencies['mongoose'] = '^8.8.4';
+    dependencies['mongoose'] = PKG.mongoose;
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^6.0.1';
-      devDependencies['prisma'] = '^6.0.1';
+      dependencies['@prisma/client'] = PKG['@prisma/client'];
+      devDependencies['prisma'] = PKG.prisma;
     } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
-      dependencies['sequelize'] = '^6.37.5';
-      dependencies['better-sqlite3'] = '^11.7.0';
-      devDependencies['@types/better-sqlite3'] = '^7.6.9';
+      dependencies['sequelize'] = PKG.sequelize;
+      dependencies['better-sqlite3'] = PKG['better-sqlite3'];
+      devDependencies['@types/better-sqlite3'] = PKG['@types/better-sqlite3'];
     } else if (config.databaseType === 'sql') {
-      dependencies['better-sqlite3'] = '^11.7.0';
-      devDependencies['@types/better-sqlite3'] = '^7.6.9';
+      dependencies['better-sqlite3'] = PKG['better-sqlite3'];
+      devDependencies['@types/better-sqlite3'] = PKG['@types/better-sqlite3'];
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['mongoose'] = '^8.8.4';
+      dependencies['mongoose'] = PKG.mongoose;
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/client-dynamodb'] = PKG['@aws-sdk/client-dynamodb'];
+      dependencies['@aws-sdk/lib-dynamodb'] = PKG['@aws-sdk/lib-dynamodb'];
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^6.0.1';
-      devDependencies['prisma'] = '^6.0.1';
+      dependencies['@prisma/client'] = PKG['@prisma/client'];
+      devDependencies['prisma'] = PKG.prisma;
     } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
-      dependencies['sequelize'] = '^6.37.5';
-      dependencies['pg'] = '^8.13.1';
-      dependencies['pg-hstore'] = '^2.3.4';
-      devDependencies['@types/pg'] = '^8.11.10';
+      dependencies['sequelize'] = PKG.sequelize;
+      dependencies['pg'] = PKG.pg;
+      dependencies['pg-hstore'] = PKG['pg-hstore'];
+      devDependencies['@types/pg'] = PKG['@types/pg'];
     } else if (config.databaseType === 'sql') {
-      dependencies['pg'] = '^8.13.1';
-      devDependencies['@types/pg'] = '^8.11.10';
+      dependencies['pg'] = PKG.pg;
+      devDependencies['@types/pg'] = PKG['@types/pg'];
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['mongoose'] = '^8.8.4';
+      dependencies['mongoose'] = PKG.mongoose;
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/client-dynamodb'] = PKG['@aws-sdk/client-dynamodb'];
+      dependencies['@aws-sdk/lib-dynamodb'] = PKG['@aws-sdk/lib-dynamodb'];
     }
   }
 
   // Add API type dependencies
   if (config.apiType === 'graphql') {
-    dependencies['graphql'] = '^16.9.0';
-    dependencies['express-graphql'] = '^0.12.0';
-    devDependencies['@types/express-graphql'] = '^0.12.0';
+    dependencies['graphql'] = PKG.graphql;
+    dependencies['express-graphql'] = PKG['express-graphql'];
+    devDependencies['@types/express-graphql'] = PKG['@types/express-graphql'];
   }
 
   const packageJson = withEngines({
@@ -85,9 +96,7 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
       dev: 'nodemon --exec ts-node src/index.ts',
       build: 'tsc',
       start: 'node dist/index.js',
-      test: 'vitest',
-      'test:ui': 'vitest --ui',
-      'test:coverage': 'vitest --coverage'
+      ...packageTestScripts(config),
     },
     dependencies,
     devDependencies
@@ -99,7 +108,7 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
   const tsconfig = {
     compilerOptions: {
       target: 'ES2020',
-      module: 'commonjs',
+      module: 'Node16',
       lib: ['ES2020'],
       outDir: './dist',
       rootDir: './src',
@@ -108,7 +117,8 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
       resolveJsonModule: true,
-      moduleResolution: 'node'
+      moduleResolution: 'Node16',
+      types: ['node']
     },
     include: ['src/**/*'],
     exclude: ['node_modules', 'dist']
@@ -117,7 +127,8 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
   await fs.writeJSON(path.join(backendPath, 'tsconfig.json'), tsconfig, { spaces: 2 });
 
   // Create Vitest config
-  const vitestConfig = `import { defineConfig } from 'vitest/config'
+  if (hasTestSuite(config, 'unit') || hasTestSuite(config, 'integration')) {
+    const vitestConfig = `import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -131,7 +142,8 @@ export default defineConfig({
 })
 `;
 
-  await fs.writeFile(path.join(backendPath, 'vitest.config.ts'), vitestConfig);
+    await fs.writeFile(path.join(backendPath, 'vitest.config.ts'), vitestConfig);
+  }
 
   // Create src directory
   const srcPath = path.join(backendPath, 'src');
@@ -229,10 +241,11 @@ export default app;
   }
 
   // Create test files
-  const testPath = path.join(srcPath, '__tests__');
-  await fs.ensureDir(testPath);
+  if (hasTestSuite(config, 'unit')) {
+    const testPath = path.join(srcPath, '__tests__');
+    await fs.ensureDir(testPath);
 
-  const testFile = `import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+    const testFile = `import { describe, it, expect } from 'vitest'
 import request from 'supertest'
 import app from '../index'
 
@@ -257,7 +270,10 @@ ${config.apiType === 'rest' ? `  it('should return API welcome message', async (
 })
 `;
 
-  await fs.writeFile(path.join(testPath, 'api.test.ts'), testFile);
+    await fs.writeFile(path.join(testPath, 'api.test.ts'), testFile);
+  }
+
+  await writeBackendExtraTests(backendPath, config);
 
   // Create deployment files
   await generateBackendDeployment(backendPath, config);

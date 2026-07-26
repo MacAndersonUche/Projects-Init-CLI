@@ -1,91 +1,99 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
-import { BACKEND_PACKAGES } from '../shared/constants';
+import { PKG } from '../shared/constants';
 import { withEngines } from '../shared/node-config';
 import { writeOpenApiSpec } from '../shared/openapi';
 import { writeEcsDeploymentFiles } from '../shared/ecs';
 import { defaultMongoUrl } from '../shared/project-docs';
+import {
+  e2eDevDependencies,
+  hasTestSuite,
+  packageTestScripts,
+  performanceDevDependencies,
+  vitestDevDependencies,
+  writeBackendExtraTests,
+} from '../shared/test-suites';
 
 export async function generateNestJS(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
-    '@nestjs/common': '^10.4.8',
-    '@nestjs/core': '^10.4.8',
-    '@nestjs/platform-express': '^10.4.8',
-    '@nestjs/testing': '^10.4.8',
-    'reflect-metadata': '^0.2.2',
-    'rxjs': '^7.8.1'
+    '@nestjs/common': PKG['@nestjs/common'],
+    '@nestjs/core': PKG['@nestjs/core'],
+    '@nestjs/platform-express': PKG['@nestjs/platform-express'],
+    '@nestjs/testing': PKG['@nestjs/testing'],
+    'reflect-metadata': PKG['reflect-metadata'],
+    'rxjs': PKG.rxjs
   };
 
   const devDependencies: Record<string, string> = {
-    '@nestjs/cli': '^10.4.5',
-    '@nestjs/schematics': '^10.1.1',
-    '@types/express': '^5.0.0',
-    '@types/node': '^22.7.5',
-    'source-map-support': '^0.5.21',
-    'ts-loader': '^9.5.1',
-    'ts-node': '^10.9.2',
-    'tsconfig-paths': '^4.2.0',
-    typescript: '^5.6.3'
+    '@nestjs/cli': PKG['@nestjs/cli'],
+    '@nestjs/schematics': PKG['@nestjs/schematics'],
+    '@types/express': PKG['@types/express'],
+    '@types/node': PKG['@types/node'],
+    'source-map-support': PKG['source-map-support'],
+    'ts-loader': PKG['ts-loader'],
+    'ts-node': PKG['ts-node'],
+    'tsconfig-paths': PKG['tsconfig-paths'],
+    typescript: PKG.typescript
   };
 
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
   } else if (config.storage === 'mongodb') {
-    dependencies['@nestjs/mongoose'] = '^10.1.0';
-    dependencies['mongoose'] = '^8.8.4';
+    dependencies['@nestjs/mongoose'] = PKG['@nestjs/mongoose'];
+    dependencies['mongoose'] = PKG.mongoose;
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^6.0.1';
-      dependencies['prisma'] = '^6.0.1';
+      dependencies['@prisma/client'] = PKG['@prisma/client'];
+      dependencies['prisma'] = PKG.prisma;
     } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
-      dependencies['@nestjs/sequelize'] = '^10.0.1';
-      dependencies['sequelize'] = '^6.37.5';
-      dependencies['sequelize-typescript'] = '^2.1.6';
-      dependencies['better-sqlite3'] = '^11.7.0';
-      devDependencies['@types/better-sqlite3'] = '^7.6.9';
+      dependencies['@nestjs/sequelize'] = PKG['@nestjs/sequelize'];
+      dependencies['sequelize'] = PKG.sequelize;
+      dependencies['sequelize-typescript'] = PKG['sequelize-typescript'];
+      dependencies['better-sqlite3'] = PKG['better-sqlite3'];
+      devDependencies['@types/better-sqlite3'] = PKG['@types/better-sqlite3'];
     } else if (config.databaseType === 'sql') {
-      dependencies['typeorm'] = '^0.3.20';
-      dependencies['better-sqlite3'] = '^11.7.0';
-      devDependencies['@types/better-sqlite3'] = '^7.6.9';
+      dependencies['typeorm'] = PKG.typeorm;
+      dependencies['better-sqlite3'] = PKG['better-sqlite3'];
+      devDependencies['@types/better-sqlite3'] = PKG['@types/better-sqlite3'];
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['@nestjs/mongoose'] = '^10.1.0';
-      dependencies['mongoose'] = '^8.8.4';
+      dependencies['@nestjs/mongoose'] = PKG['@nestjs/mongoose'];
+      dependencies['mongoose'] = PKG.mongoose;
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/client-dynamodb'] = PKG['@aws-sdk/client-dynamodb'];
+      dependencies['@aws-sdk/lib-dynamodb'] = PKG['@aws-sdk/lib-dynamodb'];
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
-      dependencies['@prisma/client'] = '^6.0.1';
-      dependencies['prisma'] = '^6.0.1';
+      dependencies['@prisma/client'] = PKG['@prisma/client'];
+      dependencies['prisma'] = PKG.prisma;
     } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
-      dependencies['@nestjs/sequelize'] = '^10.0.1';
-      dependencies['sequelize'] = '^6.37.5';
-      dependencies['sequelize-typescript'] = '^2.1.6';
-      dependencies['pg'] = '^8.13.1';
-      dependencies['pg-hstore'] = '^2.3.4';
-      devDependencies['@types/pg'] = '^8.11.10';
+      dependencies['@nestjs/sequelize'] = PKG['@nestjs/sequelize'];
+      dependencies['sequelize'] = PKG.sequelize;
+      dependencies['sequelize-typescript'] = PKG['sequelize-typescript'];
+      dependencies['pg'] = PKG.pg;
+      dependencies['pg-hstore'] = PKG['pg-hstore'];
+      devDependencies['@types/pg'] = PKG['@types/pg'];
     } else if (config.databaseType === 'sql') {
-      dependencies['typeorm'] = '^0.3.20';
-      dependencies['pg'] = '^8.13.1';
-      devDependencies['@types/pg'] = '^8.11.10';
+      dependencies['typeorm'] = PKG.typeorm;
+      dependencies['pg'] = PKG.pg;
+      devDependencies['@types/pg'] = PKG['@types/pg'];
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies['@nestjs/mongoose'] = '^10.1.0';
-      dependencies['mongoose'] = '^8.8.4';
+      dependencies['@nestjs/mongoose'] = PKG['@nestjs/mongoose'];
+      dependencies['mongoose'] = PKG.mongoose;
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies['@aws-sdk/client-dynamodb'] = '^3.699.0';
-      dependencies['@aws-sdk/lib-dynamodb'] = '^3.699.0';
+      dependencies['@aws-sdk/client-dynamodb'] = PKG['@aws-sdk/client-dynamodb'];
+      dependencies['@aws-sdk/lib-dynamodb'] = PKG['@aws-sdk/lib-dynamodb'];
     }
   }
 
   // Add API type dependencies
   if (config.apiType === 'graphql') {
-    dependencies['@nestjs/graphql'] = '^12.1.0';
-    dependencies['@nestjs/apollo'] = '^12.1.0';
-    dependencies['apollo-server-express'] = '^3.12.1';
-    dependencies['graphql'] = '^16.9.0';
+    dependencies['@nestjs/graphql'] = PKG['@nestjs/graphql'];
+    dependencies['@nestjs/apollo'] = PKG['@nestjs/apollo'];
+    dependencies['@apollo/server'] = PKG['@apollo/server'];
+    dependencies['graphql'] = PKG.graphql;
   }
 
   const packageJson = withEngines({
@@ -103,23 +111,20 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
       'start:debug': 'nest start --debug --watch',
       'start:prod': 'node dist/main',
       lint: 'eslint "{src,apps,libs,test}/**/*.ts" --fix',
-      test: 'vitest',
-      'test:ui': 'vitest --ui',
-      'test:coverage': 'vitest --coverage',
-      'test:e2e': 'vitest --config vitest.e2e.config.ts'
+      ...packageTestScripts(config),
     },
     dependencies,
     devDependencies: {
       ...devDependencies,
-      '@typescript-eslint/eslint-plugin': '^7.18.0',
-      '@typescript-eslint/parser': '^7.18.0',
-      eslint: '^8.57.1',
-      'eslint-config-prettier': '^9.1.0',
-      'eslint-plugin-prettier': '^5.2.1',
-      prettier: '^3.3.3',
-      'vitest': BACKEND_PACKAGES.vitest,
-      '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
-      '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8']
+      '@typescript-eslint/eslint-plugin': PKG['@typescript-eslint/eslint-plugin'],
+      '@typescript-eslint/parser': PKG['@typescript-eslint/parser'],
+      eslint: PKG.eslint,
+      'eslint-config-prettier': PKG['eslint-config-prettier'],
+      'eslint-plugin-prettier': PKG['eslint-plugin-prettier'],
+      prettier: PKG.prettier,
+      ...vitestDevDependencies(config),
+      ...e2eDevDependencies(config),
+      ...performanceDevDependencies(config),
     }
   });
 
@@ -140,7 +145,8 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
   // Create tsconfig
   const tsconfig = {
     compilerOptions: {
-      module: 'commonjs',
+      module: 'Node16',
+      moduleResolution: 'Node16',
       declaration: true,
       removeComments: true,
       emitDecoratorMetadata: true,
@@ -156,7 +162,10 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
       noImplicitAny: false,
       strictBindCallApply: false,
       forceConsistentCasingInFileNames: false,
-      noFallthroughCasesInSwitch: false
+      noFallthroughCasesInSwitch: false,
+      esModuleInterop: true,
+      resolveJsonModule: true,
+      types: ['node']
     }
   };
 
@@ -266,7 +275,8 @@ export class AppService {
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
 
   // Create Vitest config
-  const vitestConfig = `import { defineConfig } from 'vitest/config'
+  if (hasTestSuite(config, 'unit') || hasTestSuite(config, 'integration')) {
+    const vitestConfig = `import { defineConfig } from 'vitest/config'
 import path from 'path'
 
 export default defineConfig({
@@ -286,13 +296,15 @@ export default defineConfig({
 })
 `;
 
-  await fs.writeFile(path.join(backendPath, 'vitest.config.ts'), vitestConfig);
+    await fs.writeFile(path.join(backendPath, 'vitest.config.ts'), vitestConfig);
+  }
 
   // Create test files
-  const testPath = path.join(srcPath, '__tests__');
-  await fs.ensureDir(testPath);
+  if (hasTestSuite(config, 'unit')) {
+    const testPath = path.join(srcPath, '__tests__');
+    await fs.ensureDir(testPath);
 
-  const appControllerTest = `import { describe, it, expect, beforeEach } from 'vitest'
+    const appControllerTest = `import { describe, it, expect, beforeEach } from 'vitest'
 import { Test, TestingModule } from '@nestjs/testing'
 import { AppController } from '../app.controller'
 import { AppService } from '../app.service'
@@ -322,9 +334,9 @@ describe('AppController', () => {
 })
 `;
 
-  await fs.writeFile(path.join(testPath, 'app.controller.spec.ts'), appControllerTest);
+    await fs.writeFile(path.join(testPath, 'app.controller.spec.ts'), appControllerTest);
 
-  const appServiceTest = `import { describe, it, expect } from 'vitest'
+    const appServiceTest = `import { describe, it, expect } from 'vitest'
 import { AppService } from '../app.service'
 
 describe('AppService', () => {
@@ -335,7 +347,10 @@ describe('AppService', () => {
 })
 `;
 
-  await fs.writeFile(path.join(testPath, 'app.service.spec.ts'), appServiceTest);
+    await fs.writeFile(path.join(testPath, 'app.service.spec.ts'), appServiceTest);
+  }
+
+  await writeBackendExtraTests(backendPath, config);
 
   // Create database setup if needed
   if (config.storage === 'local-json') {

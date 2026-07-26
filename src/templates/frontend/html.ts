@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
-import { FRONTEND_PACKAGES } from '../shared/constants';
+import { FRONTEND_PACKAGES, PKG, RECOMMENDED_NODE } from '../shared/constants';
 import { withEngines } from '../shared/node-config';
 
 export async function generateHTML(frontendPath: string, config: ProjectConfig): Promise<void> {
@@ -16,9 +16,9 @@ export async function generateHTML(frontendPath: string, config: ProjectConfig):
     },
     devDependencies: {
       vite: FRONTEND_PACKAGES.vite,
-      tailwindcss: '^3.4.14',
-      postcss: '^8.4.47',
-      autoprefixer: '^10.4.20'
+      tailwindcss: PKG.tailwindcss,
+      postcss: PKG.postcss,
+      autoprefixer: PKG.autoprefixer
     }
   });
 
@@ -137,7 +137,7 @@ async function generateFrontendDeployment(frontendPath: string, config: ProjectC
   status = 200
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "${RECOMMENDED_NODE}"
 `;
 
   await fs.writeFile(path.join(frontendPath, 'netlify.toml'), netlifyToml);

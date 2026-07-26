@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { BACKEND_PACKAGES, PKG } from '../shared/constants';
 
 export async function generateCDK(backendPath: string, config: ProjectConfig): Promise<void> {
   const appName = config.projectName.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
@@ -20,18 +21,18 @@ export async function generateCDK(backendPath: string, config: ProjectConfig): P
       cdk: 'cdk'
     },
     dependencies: {
-      'aws-cdk-lib': '^2.169.0',
-      constructs: '^10.4.2',
-      'source-map-support': '^0.5.21'
+      'aws-cdk-lib': PKG['aws-cdk-lib'],
+      constructs: PKG.constructs,
+      'source-map-support': PKG['source-map-support']
     },
     devDependencies: {
-      '@types/node': '^22.7.5',
-      'aws-cdk': '^2.169.0',
-      'ts-node': '^10.9.2',
-      'typescript': '^5.6.3',
-      'vitest': '^2.1.3',
-      '@vitest/ui': '^2.1.3',
-      '@vitest/coverage-v8': '^2.1.3'
+      '@types/node': PKG['@types/node'],
+      'aws-cdk': PKG['aws-cdk'],
+      'ts-node': PKG['ts-node'],
+      'typescript': PKG.typescript,
+      'vitest': BACKEND_PACKAGES.vitest,
+      '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
+      '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8']
     }
   };
 
@@ -65,7 +66,8 @@ export async function generateCDK(backendPath: string, config: ProjectConfig): P
   const tsconfig = {
     compilerOptions: {
       target: 'ES2020',
-      module: 'commonjs',
+      module: 'Node16',
+      moduleResolution: 'Node16',
       lib: ['es2020'],
       declaration: true,
       strict: true,
@@ -84,7 +86,9 @@ export async function generateCDK(backendPath: string, config: ProjectConfig): P
       typeRoots: ['./node_modules/@types'],
       esModuleInterop: true,
       skipLibCheck: true,
-      forceConsistentCasingInFileNames: true
+      forceConsistentCasingInFileNames: true,
+      resolveJsonModule: true,
+      types: ['node']
     },
     exclude: ['node_modules', 'cdk.out']
   };

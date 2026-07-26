@@ -61,7 +61,7 @@ export function packageManagerVersionField(pm: PackageManager): string | undefin
     case 'yarn':
       return 'yarn@1.22.22';
     case 'pnpm':
-      return 'pnpm@9.15.4';
+      return 'pnpm@11.17.0';
     default:
       return undefined;
   }

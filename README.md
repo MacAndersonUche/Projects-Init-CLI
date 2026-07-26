@@ -2,7 +2,7 @@
 
 A CLI tool to scaffold monorepo projects with customizable frontend, backend, storage, ORM, and API options.
 
-[![CI](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci.yml/badge.svg)](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci.yml)
+[![CI](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci-publish.yml/badge.svg)](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci-publish.yml)
 [![npm version](https://img.shields.io/npm/v/projects-init-cli.svg)](https://www.npmjs.com/package/projects-init-cli)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -26,7 +26,7 @@ A CLI tool to scaffold monorepo projects with customizable frontend, backend, st
 
 - **CDK Database**
 - **Local SQLite**
-- **Local MongoDB**
+- **Local MongoDB** / **MongoDB (external / Atlas)**
 - **Local JSON file**
 - **External database URL**
 
@@ -40,10 +40,36 @@ A CLI tool to scaffold monorepo projects with customizable frontend, backend, st
 - REST
 - GraphQL
 
+### Package managers
+
+- npm, Yarn, or pnpm
+
+### Test suites
+
+Scaffold unit, integration, e2e (Playwright), and performance tests — then run:
+
+```bash
+npm test
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:performance
+```
+
 ### Project layout
 
 - Create in a **new subfolder**, or
 - Scaffold in the **current directory** (must be empty aside from `.git` / `.gitignore`)
+
+### Augment existing projects
+
+Add missing sections (tests, OpenAPI, Renovate, CI/CD, ECS, docs, frontend/backend) to a project that was already scaffolded:
+
+```bash
+projects-init add
+projects-init add --path ./my-app
+projects-init add --sections tests-e2e,renovate,cicd
+```
 
 ## Installation
 
@@ -60,10 +86,11 @@ npx projects-init-cli
 ## Usage
 
 ```bash
-projects-init
+projects-init          # same as: projects-init init
+projects-init add      # extend an existing scaffold
 ```
 
-You will be prompted for layout, project name, frontend, backend, storage, database/ORM options, and API type when applicable.
+You will be prompted for layout, project name, package manager, frontend, backend, storage, test suites, database/ORM options, and API type when applicable.
 
 ## Example
 

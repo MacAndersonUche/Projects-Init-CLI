@@ -9,6 +9,21 @@ export type ProjectLayout = 'folder' | 'root';
 export type DeploymentStrategy = 'render' | 'ecs';
 export type PackageManager = 'npm' | 'yarn' | 'pnpm';
 export type MongoDBConnection = 'local' | 'external';
+export type TestSuite = 'unit' | 'integration' | 'e2e' | 'performance';
+export type AugmentSection =
+  | 'tests-unit'
+  | 'tests-integration'
+  | 'tests-e2e'
+  | 'tests-performance'
+  | 'openapi'
+  | 'renovate'
+  | 'cicd'
+  | 'ecs'
+  | 'docs'
+  | 'frontend'
+  | 'backend';
+
+export const ALL_TEST_SUITES: TestSuite[] = ['unit', 'integration', 'e2e', 'performance'];
 
 export interface ProjectConfig {
   projectName: string;
@@ -24,5 +39,16 @@ export interface ProjectConfig {
   deploymentStrategy?: DeploymentStrategy;
   mongodbConnection?: MongoDBConnection;
   databaseUrl?: string;
+  /** Which test suites to scaffold. Defaults to all when omitted. */
+  testSuites?: TestSuite[];
 }
 
+export interface AugmentOptions {
+  projectPath: string;
+  sections: AugmentSection[];
+  packageManager?: PackageManager;
+  frontend?: FrontendFramework;
+  backend?: BackendFramework;
+  apiType?: APIType;
+  deploymentStrategy?: DeploymentStrategy;
+}

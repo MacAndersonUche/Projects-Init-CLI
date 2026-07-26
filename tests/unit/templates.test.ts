@@ -37,7 +37,7 @@ describe('template orchestration', () => {
     expect(pkg.workspaces).toEqual(['frontend', 'backend']);
     expect(pkg.scripts.dev).toContain('concurrently');
     expect(pkg.scripts.install).toBeUndefined();
-    expect(pkg.engines.node).toContain('20');
+    expect(pkg.engines.node).toContain('24');
     expect(await fileExists(path.join(projectPath, '.nvmrc'))).toBe(true);
   });
 

@@ -5,35 +5,35 @@ import { defaultMongoUrl } from '../shared/project-docs';
 
 export async function generateFastAPI(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: string[] = [
-    'fastapi==0.115.6',
-    'uvicorn[standard]==0.32.1',
-    'python-dotenv==1.0.1',
-    'pydantic==2.10.3',
-    'pydantic-settings==2.6.1'
+    'fastapi==0.140.0',
+    'uvicorn[standard]==0.51.0',
+    'python-dotenv==1.2.2',
+    'pydantic==2.13.4',
+    'pydantic-settings==2.14.2'
   ];
 
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage (uses built-in json module)
   } else if (config.storage === 'mongodb') {
-    dependencies.push('motor==3.6.0');
-    dependencies.push('pymongo==4.10.1');
+    dependencies.push('motor==3.7.1');
+    dependencies.push('pymongo==4.17.0');
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql') {
-      dependencies.push('sqlalchemy==2.0.36');
+      dependencies.push('sqlalchemy==2.0.51');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies.push('motor==3.6.0');
-      dependencies.push('pymongo==4.10.1');
+      dependencies.push('motor==3.7.1');
+      dependencies.push('pymongo==4.17.0');
     }
   } else if (config.storage === 'external-url') {
     if (config.databaseType === 'sql') {
-      dependencies.push('sqlalchemy==2.0.36');
-      dependencies.push('psycopg2-binary==2.9.10');
+      dependencies.push('sqlalchemy==2.0.51');
+      dependencies.push('psycopg2-binary==2.9.12');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-      dependencies.push('motor==3.6.0');
-      dependencies.push('pymongo==4.10.1');
+      dependencies.push('motor==3.7.1');
+      dependencies.push('pymongo==4.17.0');
     } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
-      dependencies.push('boto3==1.35.47');
+      dependencies.push('boto3==1.43.56');
     }
   }
 

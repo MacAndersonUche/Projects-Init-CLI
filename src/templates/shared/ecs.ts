@@ -1,19 +1,20 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { RECOMMENDED_NODE } from './constants';
 
 export async function writeEcsDeploymentFiles(
   backendPath: string,
   config: ProjectConfig
 ): Promise<void> {
-  const dockerfile = `FROM node:20-alpine AS builder
+  const dockerfile = `FROM node:${RECOMMENDED_NODE}-alpine AS builder
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:20-alpine AS runner
+FROM node:${RECOMMENDED_NODE}-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package*.json ./

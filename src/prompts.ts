@@ -220,7 +220,48 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.deploymentStrategy = deployAnswer.deploymentStrategy;
   }
 
+  const testAnswer = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'testSuites',
+      message: 'Select test suites to scaffold:',
+      choices: [
+        { name: 'Unit tests', value: 'unit', checked: true },
+        { name: 'Integration tests', value: 'integration', checked: true },
+        { name: 'E2E tests (Playwright)', value: 'e2e', checked: true },
+        { name: 'Performance tests', value: 'performance', checked: true }
+      ]
+    }
+  ]);
+  config.testSuites =
+    testAnswer.testSuites.length > 0
+      ? testAnswer.testSuites
+      : ['unit'];
+
   return config;
+}
+
+export async function promptAugment(
+  missingSections: import('./types').AugmentSection[]
+): Promise<import('./types').AugmentSection[]> {
+  if (missingSections.length === 0) {
+    return [];
+  }
+
+  const answer = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'sections',
+      message: 'Select sections to add to this existing project:',
+      choices: missingSections.map((section) => ({
+        name: section,
+        value: section,
+        checked: true
+      }))
+    }
+  ]);
+
+  return answer.sections;
 }
 
 export { getDefaultProjectName, validateProjectName } from './utils/project-name';

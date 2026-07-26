@@ -14,6 +14,7 @@ export function createBaseConfig(
     backend: 'express',
     storage: 'local-json',
     apiType: 'rest',
+    testSuites: ['unit', 'integration', 'e2e', 'performance'],
     ...overrides,
   };
 }

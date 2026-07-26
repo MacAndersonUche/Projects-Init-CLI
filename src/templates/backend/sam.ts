@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { BACKEND_PACKAGES, PKG } from '../shared/constants';
 
 export async function generateSAM(backendPath: string, config: ProjectConfig): Promise<void> {
   // Create root package.json with SAM scripts
@@ -109,8 +110,8 @@ Resources:
 
   if (config.databaseType === 'nosql') {
     packageJson.dependencies = {
-      '@aws-sdk/client-dynamodb': '^3.699.0',
-      '@aws-sdk/lib-dynamodb': '^3.699.0'
+      '@aws-sdk/client-dynamodb': PKG['@aws-sdk/client-dynamodb'],
+      '@aws-sdk/lib-dynamodb': PKG['@aws-sdk/lib-dynamodb']
     };
   }
 
@@ -203,12 +204,12 @@ describe('Tests index', () => {
       'test:coverage': 'vitest --coverage'
     },
     dependencies: {
-      'aws-sdk': '^2.814.0'
+      'aws-sdk': PKG['aws-sdk']
     },
     devDependencies: {
-      'vitest': '^2.1.3',
-      '@vitest/ui': '^2.1.3',
-      '@vitest/coverage-v8': '^2.1.3'
+      'vitest': BACKEND_PACKAGES.vitest,
+      '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
+      '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8']
     }
   };
 

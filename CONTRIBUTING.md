@@ -18,7 +18,7 @@ Participation is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). Be respe
 
 ### Prerequisites
 
-- Node.js **18+** (20 LTS recommended)
+- Node.js **20+** (24 LTS recommended)
 - npm **9+**
 - Git
 
@@ -66,7 +66,7 @@ tests/
   unit/                 # Focused generator/helper tests
   integration/          # End-to-end scaffolding tests
 .github/
-  workflows/            # CI + publish
+  workflows/            # CI and publish (ci-publish.yml)
 ```
 
 ## Making changes
