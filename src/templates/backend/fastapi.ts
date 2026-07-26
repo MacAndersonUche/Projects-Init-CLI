@@ -193,7 +193,7 @@ users_table = dynamodb.Table('users')
 }
 
 async function generateJSONFileSetup(srcPath: string, config: ProjectConfig): Promise<void> {
-  const backendPath = path.dirname(path.dirname(srcPath));
+  const backendPath = path.dirname(srcPath);
   const dbContent = `import json
 import os
 from pathlib import Path

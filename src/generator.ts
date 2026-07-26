@@ -1,5 +1,4 @@
 import fs from 'fs-extra';
-import path from 'path';
 import chalk from 'chalk';
 import { ProjectConfig } from './types';
 import {
@@ -8,28 +7,12 @@ import {
   generateRootFiles,
   generateMonorepoConfig
 } from './templates';
-
-const ROOT_IGNORED_ENTRIES = new Set(['.git', '.gitignore', '.DS_Store', 'Thumbs.db']);
+import { assertScaffoldTarget, resolveProjectPath } from './utils/paths';
 
 export async function generateProject(config: ProjectConfig): Promise<void> {
-  const projectPath =
-    config.projectLayout === 'root'
-      ? path.resolve(process.cwd())
-      : path.resolve(process.cwd(), config.projectName);
+  const projectPath = resolveProjectPath(config.projectName, config.projectLayout);
 
-  if (config.projectLayout === 'folder') {
-    if (await fs.pathExists(projectPath)) {
-      throw new Error(`Directory ${config.projectName} already exists`);
-    }
-  } else {
-    const entries = await fs.readdir(projectPath);
-    const significantEntries = entries.filter((entry) => !ROOT_IGNORED_ENTRIES.has(entry));
-    if (significantEntries.length > 0) {
-      throw new Error(
-        'Current directory is not empty. Choose subfolder layout or run the CLI from an empty directory.'
-      );
-    }
-  }
+  await assertScaffoldTarget(projectPath, config.projectName, config.projectLayout);
 
   console.log(chalk.blue(`\n📁 Creating project structure...`));
   await fs.ensureDir(projectPath);
@@ -45,8 +28,10 @@ export async function generateProject(config: ProjectConfig): Promise<void> {
   console.log(chalk.blue(`\n📄 Generating root configuration files...`));
   await generateRootFiles(projectPath, config);
 
-  console.log(chalk.blue(`\n🔧 Initializing git repository...`));
-  await initializeGit(projectPath);
+  if (process.env.PROJECTS_INIT_SKIP_GIT !== '1') {
+    console.log(chalk.blue(`\n🔧 Initializing git repository...`));
+    await initializeGit(projectPath);
+  }
 
   console.log(chalk.green(`\n✨ Project structure created at: ${projectPath}`));
 }
@@ -75,3 +60,5 @@ async function initializeGit(projectPath: string): Promise<void> {
     }
   }
 }
+
+export { resolveProjectPath, assertScaffoldTarget } from './utils/paths';

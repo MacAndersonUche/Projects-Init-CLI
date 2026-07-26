@@ -1,18 +1,7 @@
-import path from 'path';
 import inquirer from 'inquirer';
 import { ProjectConfig, DatabaseType } from './types';
-
-function getDefaultProjectName(): string {
-  const folderName = path.basename(process.cwd());
-  const sanitized = folderName
-    .toLowerCase()
-    .replace(/[\s_]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return sanitized || 'my-project';
-}
+import { getDefaultProjectName, validateProjectName } from './utils/project-name';
+import { validateDatabaseUrl } from './utils/validate';
 
 export async function promptUser(): Promise<ProjectConfig> {
   const answers = await inquirer.prompt([
@@ -30,15 +19,7 @@ export async function promptUser(): Promise<ProjectConfig> {
       name: 'projectName',
       message: 'What is your project name?',
       default: getDefaultProjectName(),
-      validate: (input: string) => {
-        if (!input.trim()) {
-          return 'Project name cannot be empty';
-        }
-        if (!/^[a-z0-9-]+$/.test(input)) {
-          return 'Project name can only contain lowercase letters, numbers, and hyphens';
-        }
-        return true;
-      }
+      validate: validateProjectName
     },
     {
       type: 'list',
@@ -89,25 +70,18 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.nosqlOption = 'mongodb';
   }
 
-  // If storage is external-url, ask for database URL
   if (config.storage === 'external-url') {
     const urlAnswer = await inquirer.prompt([
       {
         type: 'input',
         name: 'databaseUrl',
         message: 'Enter database connection URL:',
-        validate: (input: string) => {
-          if (!input.trim()) {
-            return 'Database URL cannot be empty';
-          }
-          return true;
-        }
+        validate: validateDatabaseUrl
       }
     ]);
     config.databaseUrl = urlAnswer.databaseUrl;
   }
 
-  // Ask for database type if backend is not CDK/SAM or storage is not CDK/local-json/local-mongodb
   if (
     config.backend !== 'cdk' &&
     config.backend !== 'sam' &&
@@ -153,37 +127,6 @@ export async function promptUser(): Promise<ProjectConfig> {
       ]);
       config.sqlOption = sqlAnswer.sqlOption;
     }
-  } else if (config.storage === 'local-sqlite') {
-    const dbTypeAnswer = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'databaseType',
-        message: 'Select database type:',
-        choices: [
-          { name: 'SQL', value: 'sql' },
-          { name: 'MongoDB', value: 'nosql' }
-        ]
-      }
-    ]);
-    config.databaseType = dbTypeAnswer.databaseType as DatabaseType;
-
-    if (config.databaseType === 'sql') {
-      const sqlAnswer = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'sqlOption',
-          message: 'Select SQL ORM:',
-          choices: [
-            { name: 'Raw SQL', value: 'raw-sql' },
-            { name: 'Prisma ORM', value: 'prisma' },
-            { name: 'Sequelize ORM', value: 'sequelize' }
-          ]
-        }
-      ]);
-      config.sqlOption = sqlAnswer.sqlOption;
-    } else {
-      config.nosqlOption = 'mongodb';
-    }
   } else if (config.storage === 'cdk') {
     const dbTypeAnswer = await inquirer.prompt([
       {
@@ -199,7 +142,6 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.databaseType = dbTypeAnswer.databaseType as DatabaseType;
   }
 
-  // Ask for API type if backend is Express or NestJS
   if (config.backend === 'express' || config.backend === 'nest') {
     const apiAnswer = await inquirer.prompt([
       {
@@ -217,3 +159,7 @@ export async function promptUser(): Promise<ProjectConfig> {
 
   return config;
 }
+
+// Re-export for tests and external tooling
+export { getDefaultProjectName, validateProjectName } from './utils/project-name';
+export { validateDatabaseUrl } from './utils/validate';

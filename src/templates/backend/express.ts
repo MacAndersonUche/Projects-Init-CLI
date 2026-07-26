@@ -438,7 +438,7 @@ export default docClient;
 }
 
 async function generateJSONFileSetup(srcPath: string, config: ProjectConfig): Promise<void> {
-  const backendPath = path.dirname(path.dirname(srcPath));
+  const backendPath = path.dirname(srcPath);
   const dbContent = `import fs from 'fs-extra';
 import path from 'path';
 

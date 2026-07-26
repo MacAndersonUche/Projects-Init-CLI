@@ -1,0 +1,52 @@
+name: Bug report
+description: Report unexpected CLI behavior
+title: '[bug] '
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve Projects Init CLI. Please fill in as much detail as you can.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include prompt answers if relevant
+      placeholder: |
+        1. Run `projects-init`
+        2. Choose ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: CLI version
+      placeholder: projects-init --version
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: node -v
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: Windows 11 / macOS / Ubuntu
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / stack trace
+      render: shell

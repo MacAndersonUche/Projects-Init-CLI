@@ -1,56 +1,57 @@
 # Projects Init CLI
 
-A powerful CLI tool to initialize monorepo projects with customizable frontend, backend, and storage options.
+A CLI tool to scaffold monorepo projects with customizable frontend, backend, storage, ORM, and API options.
+
+[![CI](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci.yml/badge.svg)](https://github.com/MacAndersonUche/Projects-Init-CLI/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/projects-init-cli.svg)](https://www.npmjs.com/package/projects-init-cli)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Features
 
-### Frontend Options
+### Frontend
 
-- **Next.js** - React framework with Tailwind CSS
-- **React** - React with Vite and Tailwind CSS
-- **HTML** - Plain HTML with Tailwind CSS and Vite
+- **Next.js** — React framework with Tailwind CSS
+- **React** — Vite + Tailwind CSS
+- **HTML** — Plain HTML with Tailwind CSS and Vite
 
-### Backend Options
+### Backend
 
-- **Express.js** - Node.js web framework
-- **NestJS** - Progressive Node.js framework
-- **FastAPI** - Modern Python web framework
-- **AWS CDK** - Infrastructure as code
-- **AWS SAM** - Serverless Application Model
+- **Express.js**
+- **NestJS**
+- **FastAPI** (Python)
+- **AWS CDK**
+- **AWS SAM**
 
-### Storage Options
+### Storage
 
-- **CDK Database** - Create database using AWS CDK
-- **Local SQLite** - SQLite database for local development
-- **External Database URL** - Connect to existing database
+- **CDK Database**
+- **Local SQLite**
+- **Local MongoDB**
+- **Local JSON file**
+- **External database URL**
 
-### Database Types
+### Database / ORM
 
-- **SQL**: Raw SQL or Prisma ORM
-- **NoSQL**: DynamoDB or MongoDB
+- **SQL**: Raw SQL, Prisma, or Sequelize
+- **NoSQL**: MongoDB or DynamoDB
 
-### API Types (for Express/NestJS)
+### API types (Express / NestJS)
 
-- **REST API**
-- **GraphQL**
+- REST
+- GraphQL
+
+### Project layout
+
+- Create in a **new subfolder**, or
+- Scaffold in the **current directory** (must be empty aside from `.git` / `.gitignore`)
 
 ## Installation
-
-### Global Installation
 
 ```bash
 npm install -g projects-init-cli
 ```
 
-### Local Installation
-
-```bash
-npm install
-npm run build
-npm link
-```
-
-### Use with npx (No Installation Required)
+Or run without installing:
 
 ```bash
 npx projects-init-cli
@@ -58,21 +59,11 @@ npx projects-init-cli
 
 ## Usage
 
-Run the CLI tool:
-
 ```bash
 projects-init
 ```
 
-The tool will guide you through interactive prompts to select:
-
-1. Project name
-2. Frontend framework
-3. Backend framework
-4. Storage option
-5. Database type (if applicable)
-6. Database options (SQL/NoSQL, ORM, etc.)
-7. API type (for Express/NestJS)
+You will be prompted for layout, project name, frontend, backend, storage, database/ORM options, and API type when applicable.
 
 ## Example
 
@@ -81,46 +72,58 @@ $ projects-init
 
 🚀 Project Initializer CLI
 
+? Where should the project be created? In a new subfolder (recommended)
 ? What is your project name? my-awesome-app
 ? Select frontend framework: Next.js (with Tailwind)
 ? Select backend framework: Express.js
 ? Select storage option: Local SQLite (Node.js)
 ? Select database type: SQL
-? Select SQL option: Prisma ORM
+? Select SQL ORM: Sequelize ORM
 ? Select API type: REST API
 
 ✅ Project created successfully!
-
-Next steps:
-  cd my-awesome-app
-  npm install
-  npm run dev
 ```
 
-## Project Structure
+## Generated structure
 
-Generated projects follow a monorepo structure:
-
-```
+```text
 my-project/
-├── frontend/          # Frontend application
-├── backend/           # Backend application
-├── package.json       # Root package.json with workspaces
-└── README.md          # Project documentation
+├── frontend/
+├── backend/
+├── package.json          # npm workspaces + concurrently
+├── README.md
+└── .github/workflows/    # starter CI/CD for the generated app
 ```
 
 ## Development
 
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for setup, coding guidelines, testing expectations, and PR process.
+
 ```bash
-# Install dependencies
+git clone https://github.com/MacAndersonUche/Projects-Init-CLI.git
+cd Projects-Init-CLI
 npm install
-
-# Build the project
 npm run build
-
-# Run in development mode
-npm run dev
+npm test
 ```
+
+### Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run build` | Compile TypeScript |
+| `npm run dev` | Run CLI from source |
+| `npm test` | Run Vitest suite |
+| `npm run test:coverage` | Coverage report |
+| `npm start` | Run compiled CLI |
+
+## Contributing
+
+Contributions are welcome!
+
+1. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+2. Follow the [Code of Conduct](CODE_OF_CONDUCT.md)
+3. Open an issue or pull request
 
 ## License
 

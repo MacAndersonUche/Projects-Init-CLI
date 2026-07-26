@@ -495,8 +495,8 @@ export const UserSchema = SchemaFactory.createForClass(User);
 }
 
 async function generateJSONFileModule(srcPath: string, config: ProjectConfig): Promise<void> {
-  const backendPath = path.dirname(path.dirname(srcPath));
-  
+  const backendPath = path.dirname(srcPath);
+
   // Create JSON service
   const jsonService = `import { Injectable } from '@nestjs/common';
 import * as fs from 'fs-extra';
