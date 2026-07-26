@@ -4,7 +4,7 @@
   "description": "CLI tool to initialize projects with customizable frontend, backend, and storage options",
   "main": "dist/index.js",
   "bin": {
-    "projects-init": "./dist/index.js"
+    "projects-init": "dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -31,7 +31,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/projects-init-cli.git"
+    "url": "git+https://github.com/MacAndersonUche/Projects-Init-CLI.git"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -31,13 +31,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          # npm >= 11.5.1 required for trusted publishing (OIDC)
+          node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
 
       - name: Install dependencies
         run: npm ci
@@ -77,9 +78,24 @@ jobs:
 
       - name: Publish to NPM
         if: steps.version_check.outputs.already_published != 'true'
-        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -e
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+
+          if [ -n "${NODE_AUTH_TOKEN}" ] && npm whoami >/dev/null 2>&1; then
+            echo "Authenticated with NPM_TOKEN as $(npm whoami)"
+            npm publish --access public
+          else
+            echo "NPM_TOKEN missing/invalid — publishing via trusted publishing (OIDC)"
+            if [ -f "$npmrc" ]; then
+              # setup-node writes a placeholder _authToken that blocks OIDC
+              sed -i '/_authToken/d' "$npmrc"
+            fi
+            unset NODE_AUTH_TOKEN
+            npm publish --access public
+          fi
 
       - name: Get default branch
         id: get_branch
