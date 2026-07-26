@@ -94,8 +94,9 @@ This is a monorepo project with the following structure:
 
 - Frontend: ${config.frontend === 'nextjs' ? 'Next.js' : config.frontend === 'react' ? 'React' : 'HTML'} + Tailwind CSS
 - Backend: ${config.backend === 'express' ? 'Express.js' : config.backend === 'nest' ? 'NestJS' : config.backend === 'fastapi' ? 'FastAPI' : config.backend === 'cdk' ? 'AWS CDK' : 'AWS SAM'}
-- Storage: ${config.storage === 'cdk' ? 'CDK Database' : config.storage === 'local-sqlite' ? 'Local SQLite' : 'External Database'}
-${config.databaseType ? `- Database: ${config.databaseType === 'sql' ? 'SQL' : 'NoSQL'}` : ''}
+- Storage: ${config.storage === 'cdk' ? 'CDK Database' : config.storage === 'local-sqlite' ? 'Local SQLite' : config.storage === 'local-mongodb' ? 'Local MongoDB' : config.storage === 'local-json' ? 'Local JSON file' : 'External Database'}
+${config.databaseType ? `- Database: ${config.databaseType === 'sql' ? 'SQL' : config.nosqlOption === 'mongodb' ? 'MongoDB' : 'NoSQL'}` : ''}
+${config.sqlOption ? `- ORM: ${config.sqlOption === 'prisma' ? 'Prisma' : config.sqlOption === 'sequelize' ? 'Sequelize' : 'Raw SQL'}` : ''}
 ${config.apiType ? `- API: ${config.apiType === 'rest' ? 'REST' : 'GraphQL'}` : ''}
 `;
 

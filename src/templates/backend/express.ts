@@ -26,10 +26,16 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
+  } else if (config.storage === 'local-mongodb') {
+    dependencies['mongoose'] = '^8.8.4';
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       devDependencies['prisma'] = '^6.0.1';
+    } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+      dependencies['sequelize'] = '^6.37.5';
+      dependencies['better-sqlite3'] = '^11.7.0';
+      devDependencies['@types/better-sqlite3'] = '^7.6.9';
     } else if (config.databaseType === 'sql') {
       dependencies['better-sqlite3'] = '^11.7.0';
       devDependencies['@types/better-sqlite3'] = '^7.6.9';
@@ -43,6 +49,11 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       devDependencies['prisma'] = '^6.0.1';
+    } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+      dependencies['sequelize'] = '^6.37.5';
+      dependencies['pg'] = '^8.13.1';
+      dependencies['pg-hstore'] = '^2.3.4';
+      devDependencies['@types/pg'] = '^8.11.10';
     } else if (config.databaseType === 'sql') {
       dependencies['pg'] = '^8.13.1';
       devDependencies['@types/pg'] = '^8.11.10';
@@ -188,6 +199,8 @@ export default app;
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
+  } else if (config.storage === 'local-mongodb') {
+    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -197,9 +210,16 @@ export default app;
     await generateJSONFileSetup(srcPath, config);
   } else if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
     await generatePrismaConfig(backendPath, config);
+  } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+    await generateSequelizeSetup(srcPath, config);
   } else if (config.databaseType === 'sql' && config.storage === 'local-sqlite') {
     await generateSQLiteSetup(srcPath, config);
-  } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
+  } else if (
+    config.databaseType === 'nosql' &&
+    config.nosqlOption === 'mongodb'
+  ) {
+    await generateMongoDBSetup(srcPath, config);
+  } else if (config.storage === 'local-mongodb') {
     await generateMongoDBSetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
     await generateDynamoDBSetup(srcPath, config);
@@ -291,6 +311,63 @@ model User {
 `;
 
   await fs.writeFile(path.join(prismaPath, 'schema.prisma'), schema);
+}
+
+async function generateSequelizeSetup(srcPath: string, config: ProjectConfig): Promise<void> {
+  const isSqlite = config.storage === 'local-sqlite';
+  const dbContent = isSqlite
+    ? `import { Sequelize, DataTypes } from 'sequelize';
+import path from 'path';
+
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: path.join(process.cwd(), 'database.sqlite'),
+  logging: false,
+});
+
+export const User = sequelize.define('User', {
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  name: DataTypes.STRING,
+});
+
+export const initDatabase = async () => {
+  await sequelize.authenticate();
+  await sequelize.sync();
+  console.log('Sequelize connected');
+};
+
+export default sequelize;
+`
+    : `import { Sequelize, DataTypes } from 'sequelize';
+
+const sequelize = new Sequelize(process.env.DATABASE_URL || '', {
+  dialect: 'postgres',
+  logging: false,
+});
+
+export const User = sequelize.define('User', {
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  name: DataTypes.STRING,
+});
+
+export const initDatabase = async () => {
+  await sequelize.authenticate();
+  await sequelize.sync();
+  console.log('Sequelize connected');
+};
+
+export default sequelize;
+`;
+
+  await fs.writeFile(path.join(srcPath, 'db.ts'), dbContent);
 }
 
 async function generateSQLiteSetup(srcPath: string, config: ProjectConfig): Promise<void> {

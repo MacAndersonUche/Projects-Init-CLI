@@ -27,10 +27,19 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
+  } else if (config.storage === 'local-mongodb') {
+    dependencies['@nestjs/mongoose'] = '^10.1.0';
+    dependencies['mongoose'] = '^8.8.4';
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       dependencies['prisma'] = '^6.0.1';
+    } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+      dependencies['@nestjs/sequelize'] = '^10.0.1';
+      dependencies['sequelize'] = '^6.37.5';
+      dependencies['sequelize-typescript'] = '^2.1.6';
+      dependencies['better-sqlite3'] = '^11.7.0';
+      devDependencies['@types/better-sqlite3'] = '^7.6.9';
     } else if (config.databaseType === 'sql') {
       dependencies['typeorm'] = '^0.3.20';
       dependencies['better-sqlite3'] = '^11.7.0';
@@ -46,6 +55,13 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
       dependencies['@prisma/client'] = '^6.0.1';
       dependencies['prisma'] = '^6.0.1';
+    } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+      dependencies['@nestjs/sequelize'] = '^10.0.1';
+      dependencies['sequelize'] = '^6.37.5';
+      dependencies['sequelize-typescript'] = '^2.1.6';
+      dependencies['pg'] = '^8.13.1';
+      dependencies['pg-hstore'] = '^2.3.4';
+      devDependencies['@types/pg'] = '^8.11.10';
     } else if (config.databaseType === 'sql') {
       dependencies['typeorm'] = '^0.3.20';
       dependencies['pg'] = '^8.13.1';
@@ -238,6 +254,8 @@ export class AppService {
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
+  } else if (config.storage === 'local-mongodb') {
+    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -319,7 +337,14 @@ describe('AppService', () => {
     await generateJSONFileModule(srcPath, config);
   } else if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
     await generatePrismaConfig(backendPath, config);
-  } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
+  } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
+    await generateSequelizeModule(srcPath, config);
+  } else if (
+    config.databaseType === 'nosql' &&
+    config.nosqlOption === 'mongodb'
+  ) {
+    await generateMongoDBModule(srcPath, config);
+  } else if (config.storage === 'local-mongodb') {
     await generateMongoDBModule(srcPath, config);
   }
 
@@ -360,6 +385,70 @@ model User {
 `;
 
   await fs.writeFile(path.join(prismaPath, 'schema.prisma'), schema);
+}
+
+async function generateSequelizeModule(srcPath: string, config: ProjectConfig): Promise<void> {
+  const isSqlite = config.storage === 'local-sqlite';
+  const dbContent = isSqlite
+    ? `import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { User } from './models/user.model';
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      dialect: 'sqlite',
+      storage: 'database.sqlite',
+      autoLoadModels: true,
+      synchronize: true,
+    }),
+    SequelizeModule.forFeature([User]),
+  ],
+  exports: [SequelizeModule],
+})
+export class DatabaseModule {}
+`
+    : `import { Module } from '@nestjs/common';
+import { SequelizeModule } from '@nestjs/sequelize';
+import { User } from './models/user.model';
+
+@Module({
+  imports: [
+    SequelizeModule.forRoot({
+      dialect: 'postgres',
+      uri: process.env.DATABASE_URL,
+      autoLoadModels: true,
+      synchronize: true,
+    }),
+    SequelizeModule.forFeature([User]),
+  ],
+  exports: [SequelizeModule],
+})
+export class DatabaseModule {}
+`;
+
+  await fs.writeFile(path.join(srcPath, 'database.module.ts'), dbContent);
+
+  const modelsPath = path.join(srcPath, 'models');
+  await fs.ensureDir(modelsPath);
+
+  const userModel = `import { Column, DataType, Model, Table } from 'sequelize-typescript';
+
+@Table
+export class User extends Model {
+  @Column({
+    type: DataType.STRING,
+    allowNull: false,
+    unique: true,
+  })
+  email: string;
+
+  @Column(DataType.STRING)
+  name: string;
+}
+`;
+
+  await fs.writeFile(path.join(modelsPath, 'user.model.ts'), userModel);
 }
 
 async function generateMongoDBModule(srcPath: string, config: ProjectConfig): Promise<void> {

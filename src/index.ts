@@ -20,7 +20,9 @@ program
       
       console.log(chalk.green.bold('\n✅ Project created successfully!'));
       console.log(chalk.yellow('\nNext steps:'));
-      console.log(chalk.white(`  cd ${answers.projectName}`));
+      if (answers.projectLayout === 'folder') {
+        console.log(chalk.white(`  cd ${answers.projectName}`));
+      }
       console.log(chalk.white('  npm install'));
       console.log(chalk.white('  npm run dev'));
     } catch (error) {

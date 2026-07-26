@@ -14,6 +14,9 @@ export async function generateFastAPI(backendPath: string, config: ProjectConfig
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage (uses built-in json module)
+  } else if (config.storage === 'local-mongodb') {
+    dependencies.push('motor==3.6.0');
+    dependencies.push('pymongo==4.10.1');
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql') {
       dependencies.push('sqlalchemy==2.0.36');
@@ -79,6 +82,8 @@ if __name__ == "__main__":
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
+  } else if (config.storage === 'local-mongodb') {
+    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -89,6 +94,8 @@ if __name__ == "__main__":
   } else if (config.databaseType === 'sql') {
     await generateSQLAlchemySetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
+    await generateMongoDBSetup(srcPath, config);
+  } else if (config.storage === 'local-mongodb') {
     await generateMongoDBSetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
     await generateDynamoDBSetup(srcPath, config);

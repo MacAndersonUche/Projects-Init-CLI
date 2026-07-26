@@ -17,6 +17,15 @@ function getDefaultProjectName(): string {
 export async function promptUser(): Promise<ProjectConfig> {
   const answers = await inquirer.prompt([
     {
+      type: 'list',
+      name: 'projectLayout',
+      message: 'Where should the project be created?',
+      choices: [
+        { name: 'In a new subfolder (recommended)', value: 'folder' },
+        { name: 'In the current directory (root)', value: 'root' }
+      ]
+    },
+    {
       type: 'input',
       name: 'projectName',
       message: 'What is your project name?',
@@ -60,6 +69,7 @@ export async function promptUser(): Promise<ProjectConfig> {
       choices: [
         { name: 'CDK to create database', value: 'cdk' },
         { name: 'Local SQLite (Node.js)', value: 'local-sqlite' },
+        { name: 'Local MongoDB', value: 'local-mongodb' },
         { name: 'Local JSON file', value: 'local-json' },
         { name: 'External database URL', value: 'external-url' }
       ]
@@ -68,10 +78,16 @@ export async function promptUser(): Promise<ProjectConfig> {
 
   const config: ProjectConfig = {
     projectName: answers.projectName,
+    projectLayout: answers.projectLayout,
     frontend: answers.frontend,
     backend: answers.backend,
     storage: answers.storage
   };
+
+  if (config.storage === 'local-mongodb') {
+    config.databaseType = 'nosql';
+    config.nosqlOption = 'mongodb';
+  }
 
   // If storage is external-url, ask for database URL
   if (config.storage === 'external-url') {
@@ -91,8 +107,14 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.databaseUrl = urlAnswer.databaseUrl;
   }
 
-  // Ask for database type if backend is not CDK/SAM or storage is not CDK/local-json
-  if (config.backend !== 'cdk' && config.backend !== 'sam' && config.storage !== 'cdk' && config.storage !== 'local-json') {
+  // Ask for database type if backend is not CDK/SAM or storage is not CDK/local-json/local-mongodb
+  if (
+    config.backend !== 'cdk' &&
+    config.backend !== 'sam' &&
+    config.storage !== 'cdk' &&
+    config.storage !== 'local-json' &&
+    config.storage !== 'local-mongodb'
+  ) {
     const dbTypeAnswer = await inquirer.prompt([
       {
         type: 'list',
@@ -100,7 +122,46 @@ export async function promptUser(): Promise<ProjectConfig> {
         message: 'Select database type:',
         choices: [
           { name: 'SQL', value: 'sql' },
-          { name: 'NoSQL', value: 'nosql' }
+          { name: 'MongoDB', value: 'nosql' },
+          { name: 'DynamoDB', value: 'nosql-dynamo' }
+        ]
+      }
+    ]);
+
+    if (dbTypeAnswer.databaseType === 'nosql-dynamo') {
+      config.databaseType = 'nosql';
+      config.nosqlOption = 'dynamodb';
+    } else if (dbTypeAnswer.databaseType === 'nosql') {
+      config.databaseType = 'nosql';
+      config.nosqlOption = 'mongodb';
+    } else {
+      config.databaseType = dbTypeAnswer.databaseType as DatabaseType;
+    }
+
+    if (config.databaseType === 'sql') {
+      const sqlAnswer = await inquirer.prompt([
+        {
+          type: 'list',
+          name: 'sqlOption',
+          message: 'Select SQL ORM:',
+          choices: [
+            { name: 'Raw SQL', value: 'raw-sql' },
+            { name: 'Prisma ORM', value: 'prisma' },
+            { name: 'Sequelize ORM', value: 'sequelize' }
+          ]
+        }
+      ]);
+      config.sqlOption = sqlAnswer.sqlOption;
+    }
+  } else if (config.storage === 'local-sqlite') {
+    const dbTypeAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'databaseType',
+        message: 'Select database type:',
+        choices: [
+          { name: 'SQL', value: 'sql' },
+          { name: 'MongoDB', value: 'nosql' }
         ]
       }
     ]);
@@ -111,30 +172,19 @@ export async function promptUser(): Promise<ProjectConfig> {
         {
           type: 'list',
           name: 'sqlOption',
-          message: 'Select SQL option:',
+          message: 'Select SQL ORM:',
           choices: [
             { name: 'Raw SQL', value: 'raw-sql' },
-            { name: 'Prisma ORM', value: 'prisma' }
+            { name: 'Prisma ORM', value: 'prisma' },
+            { name: 'Sequelize ORM', value: 'sequelize' }
           ]
         }
       ]);
       config.sqlOption = sqlAnswer.sqlOption;
     } else {
-      const nosqlAnswer = await inquirer.prompt([
-        {
-          type: 'list',
-          name: 'nosqlOption',
-          message: 'Select NoSQL option:',
-          choices: [
-            { name: 'DynamoDB', value: 'dynamodb' },
-            { name: 'MongoDB', value: 'mongodb' }
-          ]
-        }
-      ]);
-      config.nosqlOption = nosqlAnswer.nosqlOption;
+      config.nosqlOption = 'mongodb';
     }
   } else if (config.storage === 'cdk') {
-    // For CDK storage, still ask database type
     const dbTypeAnswer = await inquirer.prompt([
       {
         type: 'list',
