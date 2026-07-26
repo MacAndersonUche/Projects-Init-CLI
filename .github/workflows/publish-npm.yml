@@ -78,22 +78,46 @@ jobs:
       - name: Publish to NPM
         if: steps.version_check.outputs.already_published != 'true'
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          set -e
+          set -euo pipefail
           npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
 
-          if [ -n "${NODE_AUTH_TOKEN}" ] && npm whoami >/dev/null 2>&1; then
-            echo "Authenticated with NPM_TOKEN as $(npm whoami)"
-            npm publish --access public
-          else
-            echo "NPM_TOKEN missing/invalid — publishing via trusted publishing (OIDC)"
-            if [ -f "$npmrc" ]; then
-              # setup-node writes a placeholder _authToken that blocks OIDC
-              sed -i '/_authToken/d' "$npmrc"
+          # setup-node writes always-auth + placeholder _authToken which break
+          # npm 11 OIDC trusted publishing. Strip them before any publish attempt.
+          if [ -f "$npmrc" ]; then
+            sed -i '/_authToken/d' "$npmrc"
+            sed -i '/^always-auth/d' "$npmrc"
+          fi
+
+          published=false
+
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            export NODE_AUTH_TOKEN="$NPM_TOKEN"
+            if npm whoami >/dev/null 2>&1; then
+              echo "Publishing with NPM_TOKEN as $(npm whoami)"
+              # Restore token auth for classic publish
+              echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> "$npmrc"
+              npm publish --access public
+              published=true
+            else
+              echo "NPM_TOKEN is set but invalid/expired (npm whoami failed)"
+              unset NODE_AUTH_TOKEN
             fi
-            unset NODE_AUTH_TOKEN
-            npm publish --access public
+          fi
+
+          if [ "$published" = false ]; then
+            echo "Attempting trusted publishing via GitHub OIDC..."
+            unset NODE_AUTH_TOKEN || true
+            if ! npm publish --access public; then
+              echo "::error::npm publish failed with ENEEDAUTH. Configure ONE of the following, then re-run this workflow:"
+              echo "1) Trusted Publisher (recommended): https://www.npmjs.com/package/projects-init-cli → Settings → Trusted Publisher"
+              echo "   Repository: MacAndersonUche/Projects-Init-CLI"
+              echo "   Workflow filename: publish-npm.yml"
+              echo "2) Granular npm token with Read/Write on projects-init-cli, saved as GitHub secret NPM_TOKEN"
+              echo "   (classic tokens that bypass 2FA can no longer publish)"
+              exit 1
+            fi
           fi
 
       - name: Get default branch
