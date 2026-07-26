@@ -67,12 +67,46 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
           if npm view "projects-init-cli@${VERSION}" version >/dev/null 2>&1; then
             echo "already_published=true" >> "$GITHUB_OUTPUT"
             echo "Version ${VERSION} is already on npm — skipping publish"
-          else
-            echo "already_published=false" >> "$GITHUB_OUTPUT"
-            echo "Version ${VERSION} is not on npm — will publish"
+            exit 0
+          fi
+
+          echo "already_published=false" >> "$GITHUB_OUTPUT"
+
+          HIGHEST=$(npm view projects-init-cli versions --json | node -p "
+            const v = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            const list = (Array.isArray(v) ? v : [v]).filter(Boolean);
+            list.sort((a, b) => {
+              const pa = a.split('.').map(Number);
+              const pb = b.split('.').map(Number);
+              for (let i = 0; i < 3; i++) {
+                if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+              }
+              return 0;
+            });
+            list.at(-1) || '';
+          ")
+
+          echo "highest_published=${HIGHEST}" >> "$GITHUB_OUTPUT"
+          echo "Local version: ${VERSION}; highest on npm: ${HIGHEST:-none}"
+
+          if [ -n "$HIGHEST" ]; then
+            IS_LOWER=$(node -p "
+              const a = '${VERSION}'.split('.').map(Number);
+              const b = '${HIGHEST}'.split('.').map(Number);
+              for (let i = 0; i < 3; i++) {
+                if ((a[i] || 0) < (b[i] || 0)) { console.log('true'); process.exit(0); }
+                if ((a[i] || 0) > (b[i] || 0)) { console.log('false'); process.exit(0); }
+              }
+              console.log('false');
+            ")
+            if [ "$IS_LOWER" = "true" ]; then
+              echo "::error::Cannot publish ${VERSION} as latest because ${HIGHEST} is already on npm. Bump package.json above ${HIGHEST}."
+              exit 1
+            fi
           fi
 
       - name: Publish to NPM
@@ -96,7 +130,6 @@ jobs:
             export NODE_AUTH_TOKEN="$NPM_TOKEN"
             if npm whoami >/dev/null 2>&1; then
               echo "Publishing with NPM_TOKEN as $(npm whoami)"
-              # Restore token auth for classic publish
               echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> "$npmrc"
               npm publish --access public
               published=true
@@ -109,13 +142,18 @@ jobs:
           if [ "$published" = false ]; then
             echo "Attempting trusted publishing via GitHub OIDC..."
             unset NODE_AUTH_TOKEN || true
-            if ! npm publish --access public; then
-              echo "::error::npm publish failed with ENEEDAUTH. Configure ONE of the following, then re-run this workflow:"
-              echo "1) Trusted Publisher (recommended): https://www.npmjs.com/package/projects-init-cli → Settings → Trusted Publisher"
-              echo "   Repository: MacAndersonUche/Projects-Init-CLI"
-              echo "   Workflow filename: publish-npm.yml"
-              echo "2) Granular npm token with Read/Write on projects-init-cli, saved as GitHub secret NPM_TOKEN"
-              echo "   (classic tokens that bypass 2FA can no longer publish)"
+            if ! npm publish --access public 2> >(tee /tmp/npm-publish.err >&2); then
+              if grep -qE 'ENEEDAUTH|need auth|Unauthorized|401' /tmp/npm-publish.err; then
+                echo "::error::npm publish auth failed. Configure ONE of the following, then re-run:"
+                echo "1) Trusted Publisher: https://www.npmjs.com/package/projects-init-cli → Settings → Trusted Publisher"
+                echo "   Repository: MacAndersonUche/Projects-Init-CLI"
+                echo "   Workflow filename: publish-npm.yml"
+                echo "2) Granular npm token with Read/Write on projects-init-cli as GitHub secret NPM_TOKEN"
+              elif grep -q 'previously published version' /tmp/npm-publish.err; then
+                echo "::error::Version is lower than an existing npm release. Bump package.json above the highest published version."
+              else
+                echo "::error::npm publish failed. See logs above."
+              fi
               exit 1
             fi
           fi

@@ -1,6 +1,6 @@
 {
   "name": "projects-init-cli",
-  "version": "1.2.0",
+  "version": "2.1.0",
   "description": "CLI tool to initialize projects with customizable frontend, backend, and storage options",
   "main": "dist/index.js",
   "bin": {
