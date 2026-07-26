@@ -10,7 +10,7 @@ const program = new Command();
 program
   .name('projects-init')
   .description('CLI tool to initialize projects with customizable tech stacks')
-  .version('1.0.0')
+  .version('1.2.0')
   .action(async () => {
     try {
       console.log(chalk.blue.bold('\n🚀 Project Initializer CLI\n'));

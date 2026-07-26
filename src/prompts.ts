@@ -1,5 +1,18 @@
+import path from 'path';
 import inquirer from 'inquirer';
-import { ProjectConfig, BackendFramework, DatabaseType } from './types';
+import { ProjectConfig, DatabaseType } from './types';
+
+function getDefaultProjectName(): string {
+  const folderName = path.basename(process.cwd());
+  const sanitized = folderName
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return sanitized || 'my-project';
+}
 
 export async function promptUser(): Promise<ProjectConfig> {
   const answers = await inquirer.prompt([
@@ -7,7 +20,7 @@ export async function promptUser(): Promise<ProjectConfig> {
       type: 'input',
       name: 'projectName',
       message: 'What is your project name?',
-      default: 'my-project',
+      default: getDefaultProjectName(),
       validate: (input: string) => {
         if (!input.trim()) {
           return 'Project name cannot be empty';
@@ -154,4 +167,3 @@ export async function promptUser(): Promise<ProjectConfig> {
 
   return config;
 }
-

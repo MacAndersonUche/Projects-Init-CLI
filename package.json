@@ -1,6 +1,6 @@
 {
   "name": "projects-init-cli",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "CLI tool to initialize projects with customizable frontend, backend, and storage options",
   "main": "dist/index.js",
   "bin": {
@@ -38,12 +38,12 @@
   },
   "dependencies": {
     "commander": "^11.1.0",
-    "inquirer": "^9.2.12",
+    "inquirer": "^8.2.6",
     "chalk": "^4.1.2",
     "fs-extra": "^11.2.0"
   },
   "devDependencies": {
-    "@types/inquirer": "^9.0.7",
+    "@types/inquirer": "^8.2.10",
     "@types/node": "^20.10.6",
     "@types/fs-extra": "^11.0.4",
     "typescript": "^5.3.3",
