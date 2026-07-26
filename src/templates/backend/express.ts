@@ -1,6 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { BACKEND_PACKAGES } from '../shared/constants';
+import { withEngines } from '../shared/node-config';
+import { writeOpenApiSpec } from '../shared/openapi';
+import { writeEcsDeploymentFiles } from '../shared/ecs';
+import { defaultMongoUrl } from '../shared/project-docs';
 
 export async function generateExpress(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
@@ -16,17 +21,17 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
     typescript: '^5.6.3',
     'ts-node': '^10.9.2',
     nodemon: '^3.1.7',
-    'vitest': '^2.1.3',
-    '@vitest/ui': '^2.1.3',
-    'supertest': '^7.0.0',
-    '@types/supertest': '^6.0.2',
-    '@vitest/coverage-v8': '^2.1.3'
+    'vitest': BACKEND_PACKAGES.vitest,
+    '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
+    '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8'],
+    supertest: '^7.0.0',
+    '@types/supertest': '^6.0.2'
   };
 
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
-  } else if (config.storage === 'local-mongodb') {
+  } else if (config.storage === 'mongodb') {
     dependencies['mongoose'] = '^8.8.4';
   } else if (config.storage === 'local-sqlite') {
     if (config.databaseType === 'sql' && config.sqlOption === 'prisma') {
@@ -72,7 +77,7 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
     devDependencies['@types/express-graphql'] = '^0.12.0';
   }
 
-  const packageJson = {
+  const packageJson = withEngines({
     name: `${config.projectName}-backend`,
     version: '1.0.0',
     main: 'dist/index.js',
@@ -86,7 +91,7 @@ export async function generateExpress(backendPath: string, config: ProjectConfig
     },
     dependencies,
     devDependencies
-  };
+  });
 
   await fs.writeJSON(path.join(backendPath, 'package.json'), packageJson, { spaces: 2 });
 
@@ -199,8 +204,8 @@ export default app;
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
-  } else if (config.storage === 'local-mongodb') {
-    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
+  } else if (config.storage === 'mongodb' && config.databaseUrl) {
+    envExample += `DATABASE_URL=${config.databaseUrl}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -215,11 +220,9 @@ export default app;
   } else if (config.databaseType === 'sql' && config.storage === 'local-sqlite') {
     await generateSQLiteSetup(srcPath, config);
   } else if (
-    config.databaseType === 'nosql' &&
-    config.nosqlOption === 'mongodb'
+    config.storage === 'mongodb' ||
+    (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb')
   ) {
-    await generateMongoDBSetup(srcPath, config);
-  } else if (config.storage === 'local-mongodb') {
     await generateMongoDBSetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
     await generateDynamoDBSetup(srcPath, config);
@@ -258,9 +261,16 @@ ${config.apiType === 'rest' ? `  it('should return API welcome message', async (
 
   // Create deployment files
   await generateBackendDeployment(backendPath, config);
+  await writeOpenApiSpec(backendPath, config);
+  if (config.deploymentStrategy === 'ecs') {
+    await writeEcsDeploymentFiles(backendPath, config);
+  }
 }
 
 async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
+  if (config.deploymentStrategy === 'ecs') {
+    return;
+  }
   // Render configuration
   const renderYaml = `services:
   - type: web
@@ -394,11 +404,12 @@ export default db;
 }
 
 async function generateMongoDBSetup(srcPath: string, config: ProjectConfig): Promise<void> {
+  const defaultUrl = config.databaseUrl ?? defaultMongoUrl(config.projectName);
   const dbContent = `import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.DATABASE_URL || 'mongodb://localhost:27017/${config.projectName}';
+    const mongoURI = process.env.DATABASE_URL || '${defaultUrl}';
     await mongoose.connect(mongoURI);
     console.log('MongoDB connected');
   } catch (error) {

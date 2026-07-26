@@ -34,7 +34,9 @@ describe('generateFastAPI', () => {
       backendPath,
       createBaseConfig({
         backend: 'fastapi',
-        storage: 'local-mongodb',
+        storage: 'mongodb',
+        mongodbConnection: 'local',
+        databaseUrl: 'mongodb://localhost:27017/test-app',
         databaseType: 'nosql',
         nosqlOption: 'mongodb',
       })

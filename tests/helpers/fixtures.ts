@@ -9,6 +9,7 @@ export function createBaseConfig(
   return {
     projectName: 'test-app',
     projectLayout: 'folder',
+    packageManager: 'npm',
     frontend: 'react',
     backend: 'express',
     storage: 'local-json',

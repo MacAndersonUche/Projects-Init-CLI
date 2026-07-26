@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { defaultMongoUrl } from '../shared/project-docs';
 
 export async function generateFastAPI(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: string[] = [
@@ -14,7 +15,7 @@ export async function generateFastAPI(backendPath: string, config: ProjectConfig
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage (uses built-in json module)
-  } else if (config.storage === 'local-mongodb') {
+  } else if (config.storage === 'mongodb') {
     dependencies.push('motor==3.6.0');
     dependencies.push('pymongo==4.10.1');
   } else if (config.storage === 'local-sqlite') {
@@ -82,8 +83,8 @@ if __name__ == "__main__":
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
-  } else if (config.storage === 'local-mongodb') {
-    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
+  } else if (config.storage === 'mongodb' && config.databaseUrl) {
+    envExample += `DATABASE_URL=${config.databaseUrl}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -93,9 +94,10 @@ if __name__ == "__main__":
     await generateJSONFileSetup(srcPath, config);
   } else if (config.databaseType === 'sql') {
     await generateSQLAlchemySetup(srcPath, config);
-  } else if (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb') {
-    await generateMongoDBSetup(srcPath, config);
-  } else if (config.storage === 'local-mongodb') {
+  } else if (
+    config.storage === 'mongodb' ||
+    (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb')
+  ) {
     await generateMongoDBSetup(srcPath, config);
   } else if (config.databaseType === 'nosql' && config.nosqlOption === 'dynamodb') {
     await generateDynamoDBSetup(srcPath, config);
@@ -160,10 +162,11 @@ def get_db():
 }
 
 async function generateMongoDBSetup(srcPath: string, config: ProjectConfig): Promise<void> {
+  const defaultUrl = config.databaseUrl ?? defaultMongoUrl(config.projectName);
   const dbContent = `from motor.motor_asyncio import AsyncIOMotorClient
 import os
 
-DATABASE_URL = os.getenv("DATABASE_URL", "mongodb://localhost:27017")
+DATABASE_URL = os.getenv("DATABASE_URL", "${defaultUrl}")
 DATABASE_NAME = "${config.projectName}"
 
 client = AsyncIOMotorClient(DATABASE_URL)

@@ -95,7 +95,9 @@ describe('generateExpress', () => {
     await generateExpress(
       backendPath,
       createBaseConfig({
-        storage: 'local-mongodb',
+        storage: 'mongodb',
+        mongodbConnection: 'local',
+        databaseUrl: 'mongodb://localhost:27017/test-app',
         databaseType: 'nosql',
         nosqlOption: 'mongodb',
       })
@@ -154,5 +156,20 @@ describe('generateExpress', () => {
 
     expect(await fileExists(path.join(backendPath, 'src', 'db.ts'))).toBe(true);
     expect(await fileExists(path.join(backendPath, 'data', 'database.json'))).toBe(true);
+  });
+
+  it('creates openapi spec and ecs files for rest + ecs deployment', async () => {
+    await generateExpress(
+      backendPath,
+      createBaseConfig({
+        apiType: 'rest',
+        deploymentStrategy: 'ecs',
+      })
+    );
+
+    expect(await fileExists(path.join(backendPath, 'docs', 'openapi.yaml'))).toBe(true);
+    expect(await fileExists(path.join(backendPath, 'Dockerfile'))).toBe(true);
+    expect(await fileExists(path.join(backendPath, 'deploy', 'ecs', 'task-definition.json'))).toBe(true);
+    expect(await fileExists(path.join(backendPath, 'render.yaml'))).toBe(false);
   });
 });

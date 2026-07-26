@@ -4,13 +4,14 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { promptUser } from './prompts';
 import { generateProject } from './generator';
+import { installCommand } from './templates/shared/package-manager';
 
 const program = new Command();
 
 program
   .name('projects-init')
   .description('CLI tool to initialize projects with customizable tech stacks')
-  .version('2.2.0')
+  .version('2.4.0')
   .action(async () => {
     try {
       console.log(chalk.blue.bold('\n🚀 Project Initializer CLI\n'));
@@ -23,8 +24,8 @@ program
       if (answers.projectLayout === 'folder') {
         console.log(chalk.white(`  cd ${answers.projectName}`));
       }
-      console.log(chalk.white('  npm install'));
-      console.log(chalk.white('  npm run dev'));
+      console.log(chalk.white(`  ${installCommand(answers.packageManager)}`));
+      console.log(chalk.white(`  ${answers.packageManager} run dev`));
     } catch (error) {
       console.error(chalk.red.bold('\n❌ Error:'), error);
       process.exit(1);

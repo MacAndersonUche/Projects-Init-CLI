@@ -1,9 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { FRONTEND_PACKAGES } from '../shared/constants';
+import { withEngines } from '../shared/node-config';
 
 export async function generateHTML(frontendPath: string, config: ProjectConfig): Promise<void> {
-  const packageJson = {
+  const packageJson = withEngines({
     name: `${config.projectName}-frontend`,
     version: '0.1.0',
     private: true,
@@ -13,12 +15,12 @@ export async function generateHTML(frontendPath: string, config: ProjectConfig):
       preview: 'vite preview'
     },
     devDependencies: {
-      vite: '^6.0.1',
-      'tailwindcss': '^3.4.14',
-      'postcss': '^8.4.47',
-      'autoprefixer': '^10.4.20'
+      vite: FRONTEND_PACKAGES.vite,
+      tailwindcss: '^3.4.14',
+      postcss: '^8.4.47',
+      autoprefixer: '^10.4.20'
     }
-  };
+  });
 
   await fs.writeJSON(path.join(frontendPath, 'package.json'), packageJson, { spaces: 2 });
 

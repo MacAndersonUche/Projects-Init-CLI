@@ -1,6 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { BACKEND_PACKAGES } from '../shared/constants';
+import { withEngines } from '../shared/node-config';
+import { writeOpenApiSpec } from '../shared/openapi';
+import { writeEcsDeploymentFiles } from '../shared/ecs';
+import { defaultMongoUrl } from '../shared/project-docs';
 
 export async function generateNestJS(backendPath: string, config: ProjectConfig): Promise<void> {
   const dependencies: Record<string, string> = {
@@ -27,7 +32,7 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
   // Add database dependencies
   if (config.storage === 'local-json') {
     // No additional dependencies needed for JSON file storage
-  } else if (config.storage === 'local-mongodb') {
+  } else if (config.storage === 'mongodb') {
     dependencies['@nestjs/mongoose'] = '^10.1.0';
     dependencies['mongoose'] = '^8.8.4';
   } else if (config.storage === 'local-sqlite') {
@@ -83,7 +88,7 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
     dependencies['graphql'] = '^16.9.0';
   }
 
-  const packageJson = {
+  const packageJson = withEngines({
     name: `${config.projectName}-backend`,
     version: '1.0.0',
     description: '',
@@ -106,17 +111,17 @@ export async function generateNestJS(backendPath: string, config: ProjectConfig)
     dependencies,
     devDependencies: {
       ...devDependencies,
-      '@typescript-eslint/eslint-plugin': '^8.15.0',
-      '@typescript-eslint/parser': '^8.15.0',
-      eslint: '^9.15.0',
+      '@typescript-eslint/eslint-plugin': '^7.18.0',
+      '@typescript-eslint/parser': '^7.18.0',
+      eslint: '^8.57.1',
       'eslint-config-prettier': '^9.1.0',
-      'eslint-plugin-prettier': '^6.0.0',
+      'eslint-plugin-prettier': '^5.2.1',
       prettier: '^3.3.3',
-      'vitest': '^2.1.3',
-      '@vitest/ui': '^2.1.3',
-      '@vitest/coverage-v8': '^2.1.3'
+      'vitest': BACKEND_PACKAGES.vitest,
+      '@vitest/ui': BACKEND_PACKAGES['@vitest/ui'],
+      '@vitest/coverage-v8': BACKEND_PACKAGES['@vitest/coverage-v8']
     }
-  };
+  });
 
   await fs.writeJSON(path.join(backendPath, 'package.json'), packageJson, { spaces: 2 });
 
@@ -254,8 +259,8 @@ export class AppService {
 
   if (config.storage === 'external-url' && config.databaseUrl) {
     envExample += `DATABASE_URL=${config.databaseUrl}\n`;
-  } else if (config.storage === 'local-mongodb') {
-    envExample += `DATABASE_URL=mongodb://localhost:27017/${config.projectName}\n`;
+  } else if (config.storage === 'mongodb' && config.databaseUrl) {
+    envExample += `DATABASE_URL=${config.databaseUrl}\n`;
   }
 
   await fs.writeFile(path.join(backendPath, '.env.example'), envExample);
@@ -340,16 +345,18 @@ describe('AppService', () => {
   } else if (config.databaseType === 'sql' && config.sqlOption === 'sequelize') {
     await generateSequelizeModule(srcPath, config);
   } else if (
-    config.databaseType === 'nosql' &&
-    config.nosqlOption === 'mongodb'
+    config.storage === 'mongodb' ||
+    (config.databaseType === 'nosql' && config.nosqlOption === 'mongodb')
   ) {
-    await generateMongoDBModule(srcPath, config);
-  } else if (config.storage === 'local-mongodb') {
     await generateMongoDBModule(srcPath, config);
   }
 
   // Create deployment files
   await generateBackendDeployment(backendPath, config);
+  await writeOpenApiSpec(backendPath, config);
+  if (config.deploymentStrategy === 'ecs') {
+    await writeEcsDeploymentFiles(backendPath, config);
+  }
 }
 
 async function generatePrismaConfig(backendPath: string, config: ProjectConfig): Promise<void> {
@@ -452,13 +459,14 @@ export class User extends Model {
 }
 
 async function generateMongoDBModule(srcPath: string, config: ProjectConfig): Promise<void> {
+  const defaultUrl = config.databaseUrl ?? defaultMongoUrl(config.projectName);
   const dbContent = `import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
 
 @Module({
   imports: [
-    MongooseModule.forRoot(process.env.DATABASE_URL || 'mongodb://localhost:27017/${config.projectName}'),
+    MongooseModule.forRoot(process.env.DATABASE_URL || '${defaultUrl}'),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
   exports: [MongooseModule],
@@ -583,6 +591,10 @@ export class JsonDatabaseService {
 }
 
 async function generateBackendDeployment(backendPath: string, config: ProjectConfig): Promise<void> {
+  if (config.deploymentStrategy === 'ecs') {
+    return;
+  }
+
   // Render configuration
   const renderYaml = `services:
   - type: web

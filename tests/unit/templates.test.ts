@@ -23,35 +23,44 @@ describe('template orchestration', () => {
     await fs.remove(tempDir);
   });
 
-  it('writes root workspace package.json', async () => {
+  it('writes root workspace package.json without recursive install script', async () => {
     await generateMonorepoConfig(projectPath, createBaseConfig());
 
     const pkg = await readJson<{
       name: string;
       workspaces: string[];
       scripts: Record<string, string>;
+      engines: { node: string };
     }>(path.join(projectPath, 'package.json'));
 
     expect(pkg.name).toBe('test-app');
     expect(pkg.workspaces).toEqual(['frontend', 'backend']);
     expect(pkg.scripts.dev).toContain('concurrently');
+    expect(pkg.scripts.install).toBeUndefined();
+    expect(pkg.engines.node).toContain('20');
+    expect(await fileExists(path.join(projectPath, '.nvmrc'))).toBe(true);
   });
 
-  it('writes README mentioning mongodb and sequelize when configured', async () => {
+  it('writes README, docs, renovate, and openapi when configured', async () => {
     await generateRootFiles(
       projectPath,
       createBaseConfig({
-        storage: 'local-mongodb',
+        storage: 'mongodb',
+        mongodbConnection: 'local',
+        databaseUrl: 'mongodb://localhost:27017/test-app',
         databaseType: 'nosql',
         nosqlOption: 'mongodb',
-        sqlOption: undefined,
+        apiType: 'rest',
+        deploymentStrategy: 'ecs',
       })
     );
 
     const readme = await fs.readFile(path.join(projectPath, 'README.md'), 'utf8');
-    expect(readme).toContain('Local MongoDB');
-    expect(readme).toContain('MongoDB');
+    expect(readme).toContain('MongoDB (local)');
+    expect(readme).toContain('Renovate');
     expect(await fileExists(path.join(projectPath, '.gitignore'))).toBe(true);
+    expect(await fileExists(path.join(projectPath, 'renovate.json'))).toBe(true);
+    expect(await fileExists(path.join(projectPath, 'docs', 'DEPLOYMENT.md'))).toBe(true);
     expect(await fileExists(path.join(projectPath, '.github', 'workflows', 'ci.yml'))).toBe(true);
   });
 

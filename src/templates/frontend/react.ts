@@ -1,9 +1,11 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { ProjectConfig } from '../../types';
+import { FRONTEND_PACKAGES } from '../shared/constants';
+import { withEngines } from '../shared/node-config';
 
 export async function generateReact(frontendPath: string, config: ProjectConfig): Promise<void> {
-  const packageJson = {
+  const packageJson = withEngines({
     name: `${config.projectName}-frontend`,
     version: '0.1.0',
     private: true,
@@ -23,25 +25,25 @@ export async function generateReact(frontendPath: string, config: ProjectConfig)
     devDependencies: {
       '@types/react': '^18.3.12',
       '@types/react-dom': '^18.3.1',
-      '@typescript-eslint/eslint-plugin': '^8.15.0',
-      '@typescript-eslint/parser': '^8.15.0',
-      '@vitejs/plugin-react': '^4.3.2',
-      eslint: '^9.15.0',
-      'eslint-plugin-react-hooks': '^5.1.0',
+      '@typescript-eslint/eslint-plugin': FRONTEND_PACKAGES['@typescript-eslint/eslint-plugin'],
+      '@typescript-eslint/parser': FRONTEND_PACKAGES['@typescript-eslint/parser'],
+      '@vitejs/plugin-react': FRONTEND_PACKAGES['@vitejs/plugin-react'],
+      eslint: FRONTEND_PACKAGES.eslint,
+      'eslint-plugin-react-hooks': '^4.6.2',
       'eslint-plugin-react-refresh': '^0.4.14',
       typescript: '^5.6.3',
-      vite: '^6.0.1',
-      'tailwindcss': '^3.4.14',
-      'postcss': '^8.4.47',
-      'autoprefixer': '^10.4.20',
-      'vitest': '^2.1.3',
-      '@vitest/ui': '^2.1.3',
+      vite: FRONTEND_PACKAGES.vite,
+      tailwindcss: '^3.4.14',
+      postcss: '^8.4.47',
+      autoprefixer: '^10.4.20',
+      vitest: FRONTEND_PACKAGES.vitest,
+      '@vitest/ui': FRONTEND_PACKAGES['@vitest/ui'],
       '@testing-library/react': '^16.0.1',
       '@testing-library/jest-dom': '^6.6.3',
-      'jsdom': '^25.0.1',
-      '@vitest/coverage-v8': '^2.1.3'
+      jsdom: '^25.0.1',
+      '@vitest/coverage-v8': FRONTEND_PACKAGES['@vitest/coverage-v8']
     }
-  };
+  });
 
   await fs.writeJSON(path.join(frontendPath, 'package.json'), packageJson, { spaces: 2 });
 

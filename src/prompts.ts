@@ -2,6 +2,7 @@ import inquirer from 'inquirer';
 import { ProjectConfig, DatabaseType } from './types';
 import { getDefaultProjectName, validateProjectName } from './utils/project-name';
 import { validateDatabaseUrl } from './utils/validate';
+import { defaultMongoUrl } from './templates/shared/project-docs';
 
 export async function promptUser(): Promise<ProjectConfig> {
   const answers = await inquirer.prompt([
@@ -20,6 +21,16 @@ export async function promptUser(): Promise<ProjectConfig> {
       message: 'What is your project name?',
       default: getDefaultProjectName(),
       validate: validateProjectName
+    },
+    {
+      type: 'list',
+      name: 'packageManager',
+      message: 'Select package manager:',
+      choices: [
+        { name: 'npm', value: 'npm' },
+        { name: 'Yarn (Classic v1)', value: 'yarn' },
+        { name: 'pnpm', value: 'pnpm' }
+      ]
     },
     {
       type: 'list',
@@ -50,9 +61,9 @@ export async function promptUser(): Promise<ProjectConfig> {
       choices: [
         { name: 'CDK to create database', value: 'cdk' },
         { name: 'Local SQLite (Node.js)', value: 'local-sqlite' },
-        { name: 'Local MongoDB', value: 'local-mongodb' },
+        { name: 'MongoDB', value: 'mongodb' },
         { name: 'Local JSON file', value: 'local-json' },
-        { name: 'External database URL', value: 'external-url' }
+        { name: 'External database URL (SQL / Postgres / etc.)', value: 'external-url' }
       ]
     }
   ]);
@@ -60,14 +71,43 @@ export async function promptUser(): Promise<ProjectConfig> {
   const config: ProjectConfig = {
     projectName: answers.projectName,
     projectLayout: answers.projectLayout,
+    packageManager: answers.packageManager,
     frontend: answers.frontend,
     backend: answers.backend,
     storage: answers.storage
   };
 
-  if (config.storage === 'local-mongodb') {
+  if (config.storage === 'mongodb') {
     config.databaseType = 'nosql';
     config.nosqlOption = 'mongodb';
+
+    const mongoAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'mongodbConnection',
+        message: 'How will MongoDB be connected?',
+        choices: [
+          { name: 'Local MongoDB (localhost)', value: 'local' },
+          { name: 'External / Atlas / hosted URL', value: 'external' }
+        ]
+      }
+    ]);
+    config.mongodbConnection = mongoAnswer.mongodbConnection;
+
+    if (config.mongodbConnection === 'external') {
+      const urlAnswer = await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'databaseUrl',
+          message: 'Enter MongoDB connection URL:',
+          default: 'mongodb+srv://user:password@cluster.mongodb.net/dbname',
+          validate: validateDatabaseUrl
+        }
+      ]);
+      config.databaseUrl = urlAnswer.databaseUrl;
+    } else {
+      config.databaseUrl = defaultMongoUrl(config.projectName);
+    }
   }
 
   if (config.storage === 'external-url') {
@@ -87,7 +127,7 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.backend !== 'sam' &&
     config.storage !== 'cdk' &&
     config.storage !== 'local-json' &&
-    config.storage !== 'local-mongodb'
+    config.storage !== 'mongodb'
   ) {
     const dbTypeAnswer = await inquirer.prompt([
       {
@@ -127,6 +167,21 @@ export async function promptUser(): Promise<ProjectConfig> {
       ]);
       config.sqlOption = sqlAnswer.sqlOption;
     }
+  } else if (config.storage === 'local-sqlite') {
+    const sqlAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'sqlOption',
+        message: 'Select SQL ORM:',
+        choices: [
+          { name: 'Raw SQL', value: 'raw-sql' },
+          { name: 'Prisma ORM', value: 'prisma' },
+          { name: 'Sequelize ORM', value: 'sequelize' }
+        ]
+      }
+    ]);
+    config.databaseType = 'sql';
+    config.sqlOption = sqlAnswer.sqlOption;
   } else if (config.storage === 'cdk') {
     const dbTypeAnswer = await inquirer.prompt([
       {
@@ -157,9 +212,23 @@ export async function promptUser(): Promise<ProjectConfig> {
     config.apiType = apiAnswer.apiType;
   }
 
+  if (config.backend === 'express' || config.backend === 'nest' || config.backend === 'fastapi') {
+    const deployAnswer = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'deploymentStrategy',
+        message: 'Select backend deployment strategy:',
+        choices: [
+          { name: 'Render / PaaS (render.yaml)', value: 'render' },
+          { name: 'AWS ECS (Docker + Fargate)', value: 'ecs' }
+        ]
+      }
+    ]);
+    config.deploymentStrategy = deployAnswer.deploymentStrategy;
+  }
+
   return config;
 }
 
-// Re-export for tests and external tooling
 export { getDefaultProjectName, validateProjectName } from './utils/project-name';
 export { validateDatabaseUrl } from './utils/validate';
